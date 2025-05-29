@@ -6,9 +6,22 @@ export default function HomePage() {
   const [paidJobs, setPaidJobs] = useState([]);
   const [allJobs, setAllJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
+
+  const [loadingPaidJobs, setLoadingPaidJobs] = useState(true);
+  const [loadingAllJobs, setLoadingAllJobs] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterCompany, setFilterCompany] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterExperience, setFilterExperience] = useState("");
+  const [filterDomain, setFilterDomain] = useState("");
+
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 5;
+
+  const uniqueValues = (arr, key) => [
+    ...new Set(arr.map((item) => item[key]).filter(Boolean)),
+  ];
 
   useEffect(() => {
     fetch("http://localhost:5000/api/jobs/paid")
@@ -16,8 +29,14 @@ export default function HomePage() {
         if (!res.ok) throw new Error("Failed to fetch active jobs");
         return res.json();
       })
-      .then((data) => setPaidJobs(data))
-      .catch(console.error);
+      .then((data) => {
+        setPaidJobs(data);
+        setLoadingPaidJobs(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoadingPaidJobs(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -28,30 +47,45 @@ export default function HomePage() {
       })
       .then((data) => {
         setAllJobs(data);
-        setFilteredJobs(data);
+        setLoadingAllJobs(false);
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        setLoadingAllJobs(false);
+      });
   }, []);
 
   useEffect(() => {
-    const filtered = allJobs.filter((job) =>
-      job.TITLU.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = allJobs.filter((job) => {
+      return (
+        job.TITLU.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (filterCompany === "" || job.DENUMIRE_COMPANIE === filterCompany) &&
+        (filterCity === "" || job.LOCATIE === filterCity) &&
+        (filterExperience === "" ||
+          job.NIVEL_EXPERIENTA === filterExperience) &&
+        (filterDomain === "" || job.DOMENIU === filterDomain)
+      );
+    });
     setFilteredJobs(filtered);
-    setCurrentPage(1); // reset to first page on search
-  }, [searchTerm, allJobs]);
+    setCurrentPage(1);
+  }, [
+    allJobs,
+    searchTerm,
+    filterCompany,
+    filterCity,
+    filterExperience,
+    filterDomain,
+  ]);
 
   const indexOfLastJob = currentPage * jobsPerPage;
   const indexOfFirstJob = indexOfLastJob - jobsPerPage;
   const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
-
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
 
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
+  const companyOptions = uniqueValues(allJobs, "DENUMIRE_COMPANIE");
+  const cityOptions = uniqueValues(allJobs, "LOCATIE");
+  const experienceOptions = uniqueValues(allJobs, "NIVEL_EXPERIENTA");
+  const domainOptions = uniqueValues(allJobs, "DOMENIU");
 
   return (
     <div className="p-4">
@@ -60,42 +94,84 @@ export default function HomePage() {
 
       <h2 className="text-2xl font-bold mt-10 mb-4">Toate anunțurile</h2>
 
-      <input
-        type="text"
-        placeholder="Caută titlul jobului..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 p-2 border rounded w-full"
-      />
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <input
+          type="text"
+          placeholder="Caută după titlu..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border p-2 rounded"
+        />
 
-      <JobList jobs={currentJobs} />
-
-      <div className="flex justify-center mt-4 space-x-2">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-          disabled={currentPage === 1}
+        <select
+          value={filterCompany}
+          onChange={(e) => setFilterCompany(e.target.value)}
+          className="border p-2 rounded"
         >
-          ‹
-        </button>
-        {[...Array(totalPages)].map((_, index) => (
+          <option value="">Toate companiile</option>
+          {companyOptions.map((company) => (
+            <option key={company} value={company}>
+              {company}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filterCity}
+          onChange={(e) => setFilterCity(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="">Toate orașele</option>
+          {cityOptions.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filterExperience}
+          onChange={(e) => setFilterExperience(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="">Toate nivelurile</option>
+          {experienceOptions.map((exp) => (
+            <option key={exp} value={exp}>
+              {exp}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filterDomain}
+          onChange={(e) => setFilterDomain(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="">Toate domeniile</option>
+          {domainOptions.map((domain) => (
+            <option key={domain} value={domain}>
+              {domain}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <JobList loading={loadingAllJobs} jobs={currentJobs} />
+
+      <div className="flex justify-center mt-6 space-x-2">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
           <button
-            key={index + 1}
-            onClick={() => handlePageChange(index + 1)}
-            className={`px-3 py-1 border rounded ${
-              currentPage === index + 1 ? "bg-blue-500 text-white" : ""
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`px-4 py-2 border rounded ${
+              page === currentPage
+                ? "bg-blue-500 text-white"
+                : "bg-white text-black"
             }`}
           >
-            {index + 1}
+            {page}
           </button>
         ))}
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-          disabled={currentPage === totalPages}
-        >
-          ›
-        </button>
       </div>
     </div>
   );

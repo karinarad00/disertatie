@@ -33,9 +33,13 @@ router.get("/all", async (req, res) => {
         j.nivel_experienta,
         c.id_companie,
         c.denumire_companie,
-        c.logo
+        c.logo,
+        o.denumire_oras AS locatie,
+        d.denumire_domeniu AS domeniu
       FROM job j
       LEFT JOIN companie c ON j.id_companie = c.id_companie
+      LEFT JOIN centrucompanie cc ON cc.id_companie = c.id_companie
+      LEFT JOIN oras o ON cc.id_oras = o.id_oras
       LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
     `);
     res.json(jobs);
