@@ -6,19 +6,29 @@ export default function HomePage() {
   const [paidJobs, setPaidJobs] = useState([]);
   const [allJobs, setAllJobs] = useState([]);
 
-  // Simulare apel API pentru joburile care au plătit subscripția (pentru slider)
   useEffect(() => {
-    fetch("/api/jobs/paid")
-      .then((res) => res.json())
-      .then((data) => setPaidJobs(data))
+    fetch("http://localhost:5000/api/jobs/paid")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch active jobs");
+        return res.json();
+      })
+      .then((data) => {
+        console.log(data);
+        setPaidJobs(data);
+      })
       .catch(console.error);
   }, []);
 
-  // Simulare apel API pentru toate joburile
   useEffect(() => {
-    fetch("/api/jobs/all")
-      .then((res) => res.json())
-      .then((data) => setAllJobs(data))
+    fetch("http://localhost:5000/api/jobs/all")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch all jobs");
+        return res.json();
+      })
+      .then((data) => {
+        console.log(data);
+        setAllJobs(data);
+      })
       .catch(console.error);
   }, []);
 

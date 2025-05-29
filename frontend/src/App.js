@@ -4,6 +4,10 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import RequestReset from "./pages/RequestResetPage";
+import ChangePassword from "./pages/ChangePasswordPage";
+import CerereAngajator from "./pages/CerereAngajatorPage";
 import JobDetailsPage from "./pages/JobDetailsPage";
 
 function App() {
@@ -23,6 +27,10 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage setUser={setUser} />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<RequestReset />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/cerere-angajator" element={<CerereAngajator />} />
           <Route path="/job/:id" element={<JobDetailsPage />} />
         </Routes>
       </main>
