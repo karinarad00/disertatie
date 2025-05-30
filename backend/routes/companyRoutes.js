@@ -61,9 +61,13 @@ router.get("/locations", async (req, res) => {
   try {
     connection = await oracledb.getConnection();
     const result = await connection.execute(
-      `SELECT c.denumire_companie AS company, cc.adresa AS address
+      `SELECT 
+         c.denumire_companie AS company,
+         cc.adresa AS address,
+         o.denumire_oras AS city
        FROM Companie c
-       JOIN CentruCompanie cc ON c.id_companie = cc.id_companie`,
+       JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
+       JOIN Oras o ON cc.id_oras = o.id_oras`,
       [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
