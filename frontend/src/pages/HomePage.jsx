@@ -89,20 +89,15 @@ export default function HomePage() {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Anunțuri promovate</h2>
-      <JobSlider jobs={paidJobs} />
-
-      <h2 className="text-2xl font-bold mt-10 mb-4">Toate anunțurile</h2>
-
+      <JobSlider loading={loadingPaidJobs} jobs={paidJobs} />
+      <input
+        type="text"
+        placeholder="Caută după titlu..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="border p-2 rounded flex mb-4 w-full"
+      />
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <input
-          type="text"
-          placeholder="Caută după titlu..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border p-2 rounded"
-        />
-
         <select
           value={filterCompany}
           onChange={(e) => setFilterCompany(e.target.value)}
