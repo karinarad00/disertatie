@@ -9,6 +9,7 @@ import RequestReset from "./pages/RequestResetPage";
 import ChangePassword from "./pages/ChangePasswordPage";
 import CerereAngajator from "./pages/CerereAngajatorPage";
 import JobDetailsPage from "./pages/JobDetailsPage";
+import MapPage from "./pages/MapPage";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -32,6 +33,7 @@ function App() {
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/cerere-angajator" element={<CerereAngajator />} />
           <Route path="/job/:id" element={<JobDetailsPage />} />
+          <Route path="/map" element={<MapPage />} />
         </Routes>
       </main>
       <Footer />

@@ -29,16 +29,14 @@ export default function JobSlider({ jobs, loading = false }) {
     <div className="w-full mb-10 px-2">
       {loading ? (
         <div className="space-y-4 animate-pulse">
-            <div
-              className="h-80 bg-gray-300 shadow-lg"
-            ></div>
+          <div className="h-80 bg-gray-300 shadow-lg"></div>
         </div>
       ) : (
         <Slider {...settings}>
           {jobs.map((job, index) => (
             <Link
-              to={`/job/${job.id}`}
-              key={job.id}
+              to={`/job/${job.ID_JOB}`}
+              key={job.ID_JOB}
               className="block px-2 text-white"
             >
               <div
@@ -50,8 +48,8 @@ export default function JobSlider({ jobs, loading = false }) {
                 }}
               >
                 <div className="h-full w-full bg-black bg-opacity-60 p-6 flex flex-col justify-end">
-                  <h3 className="text-xl font-bold">{job.title}</h3>
-                  <p className="text-sm">{job.company}</p>
+                  <h3 className="text-xl font-bold">{job.TITLU}</h3>
+                  <p className="text-sm">{job.DENUMIRE_COMPANIE}</p>
                 </div>
               </div>
             </Link>

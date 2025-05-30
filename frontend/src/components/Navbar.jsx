@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../redux/authSlice"; 
+import { logout } from "../redux/authSlice";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     dispatch(logout());
-    navigate("/login"); 
+    navigate("/login");
   };
 
   return (
@@ -25,7 +25,9 @@ export default function Navbar() {
           <Link to="/" className="hover:underline">
             Home
           </Link>
-
+          <Link to="/map" className="hover:underline">
+            Hartă
+          </Link>
           {user ? (
             <>
               <Link to="/profile" className="hover:underline">

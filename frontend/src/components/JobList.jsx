@@ -2,8 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 export default function JobList({ jobs, loading = false }) {
-  console.log("JobList component rendered with jobs:", jobs);
-
+  
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "long", day: "numeric" };
     const date = new Date(dateString);
