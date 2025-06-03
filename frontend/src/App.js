@@ -8,6 +8,8 @@ import RegisterPage from "./pages/RegisterPage";
 import RequestReset from "./pages/RequestResetPage";
 import ChangePassword from "./pages/ChangePasswordPage";
 import CerereAngajator from "./pages/CerereAngajatorPage";
+import ApproveRequest from "./pages/ApproveRequest";
+import RejectRequest from "./pages/RejectRequest";
 import JobDetailsPage from "./pages/JobDetailsPage";
 import MapPage from "./pages/MapPage";
 
@@ -32,6 +34,8 @@ function App() {
           <Route path="/reset-password" element={<RequestReset />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/cerere-angajator" element={<CerereAngajator />} />
+          <Route path="/:id/aproba" element={<ApproveRequest />} />
+          <Route path="/:id/respinge" element={<RejectRequest />} />
           <Route path="/job/:id" element={<JobDetailsPage />} />
           <Route path="/map" element={<MapPage />} />
         </Routes>

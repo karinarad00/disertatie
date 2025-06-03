@@ -2,8 +2,13 @@ const express = require("express");
 const router = express.Router();
 const oracledb = require("oracledb");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 require("dotenv").config();
-const { sendEmployerRequestEmail } = require("../mailer");
+const {
+  sendResetEmail,
+  sendEmployerRequestEmail,
+  sendAdminNotificationEmail,
+} = require("../mailer");
 
 // Înregistrare utilizator
 router.post("/register", async (req, res) => {
@@ -224,7 +229,20 @@ router.post("/cereri-angajatori", async (req, res) => {
   try {
     connection = await oracledb.getConnection();
 
-    // Generează id_cerere din secvență seq_cereri_angajatori (presupusă creată în Oracle)
+    // Verifică dacă deja există o cerere cu același id_companie și email
+    const existingRequest = await connection.execute(
+      `SELECT COUNT(*) AS count FROM CereriAngajatori WHERE id_companie = :id_companie AND email = :email`,
+      { id_companie, email },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (existingRequest.rows[0].COUNT > 0) {
+      return res.status(409).json({
+        message: "Există deja o cerere pentru această companie și email.",
+      });
+    }
+
+    // Continuă cu inserarea dacă nu există deja
     const seqResult = await connection.execute(
       `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`,
       [],
@@ -254,6 +272,21 @@ router.post("/cereri-angajatori", async (req, res) => {
       console.error("Eroare la trimiterea emailului:", emailErr);
     }
 
+    // Notifică adminul (presupunem că emailul adminului este stocat în .env)
+    const adminEmail = process.env.ADMIN_EMAIL;
+    try {
+      await sendAdminNotificationEmail(adminEmail, {
+        id_cerere: nextId,
+        id_companie,
+        email,
+        nume_contact,
+        telefon,
+        descriere,
+      });
+    } catch (emailErr) {
+      console.error("Eroare la trimiterea notificării către admin:", emailErr);
+    }
+
     res.status(201).json({ message: "Cererea a fost înregistrată." });
   } catch (err) {
     console.error("Eroare la inserarea cererii:", err);
@@ -266,6 +299,79 @@ router.post("/cereri-angajatori", async (req, res) => {
         console.error(e);
       }
     }
+  }
+});
+
+// Aprobare cerere angajator
+router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
+  const id_cerere = req.params.id;
+  let connection;
+
+  try {
+    connection = await oracledb.getConnection();
+
+    // Verifică dacă cererea există
+    const result = await connection.execute(
+      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
+      [id_cerere],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Cererea nu a fost găsită." });
+    }
+
+    // Actualizează statusul în "Aprobat"
+    await connection.execute(
+      `UPDATE CereriAngajatori SET status = 'Approved' WHERE id_cerere = :id`,
+      [id_cerere],
+      { autoCommit: true }
+    );
+
+    res.json({ message: "Cererea a fost aprobată." });
+  } catch (err) {
+    console.error("Eroare la aprobarea cererii:", err);
+    res.status(500).json({ message: "Eroare server." });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+});
+
+router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
+  const id_cerere = req.params.id;
+  let connection;
+
+  try {
+    connection = await oracledb.getConnection();
+
+    const result = await connection.execute(
+      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
+      [id_cerere],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Cererea nu a fost găsită." });
+    }
+
+    await connection.execute(
+      `UPDATE CereriAngajatori SET status = 'Rejected' WHERE id_cerere = :id`,
+      [id_cerere],
+      { autoCommit: true }
+    );
+
+    res.json({ message: "Cererea a fost respinsă." });
+  } catch (err) {
+    console.error("Eroare respingere:", err);
+    res.status(500).json({ message: "Eroare server." });
+  } finally {
+    if (connection) await connection.close().catch(console.error);
   }
 });
 
