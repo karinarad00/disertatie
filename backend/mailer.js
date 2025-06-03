@@ -99,8 +99,30 @@ async function sendAdminNotificationEmail(adminEmail, cerereInfo) {
   await transporter.sendMail(mailOptions);
 }
 
+// Email: Decizie aprobare/respingere cerere angajator
+async function sendEmployerDecisionEmail(toEmail, status, motiv) {
+  const subject = `Cererea ta a fost ${status === "approved" ? "aprobată" : "respinsă"}`;
+  const html = `
+    <p>Bună,</p>
+    <p>Cererea ta de cont angajator a fost <strong>${status === "approved" ? "aprobată" : "respinsă"}</strong>.</p>
+    ${motiv ? `<p><strong>Motiv:</strong> ${motiv}</p>` : ""}
+    <p>Îți mulțumim pentru interesul acordat platformei noastre!</p>
+  `;
+
+  const mailOptions = {
+    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    to: toEmail,
+    subject,
+    html,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+
 module.exports = {
   sendResetEmail,
   sendEmployerRequestEmail,
   sendAdminNotificationEmail,
+  sendEmployerDecisionEmail,
 };

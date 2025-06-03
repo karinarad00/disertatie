@@ -8,6 +8,7 @@ const {
   sendResetEmail,
   sendEmployerRequestEmail,
   sendAdminNotificationEmail,
+  sendEmployerDecisionEmail
 } = require("../mailer");
 
 // Înregistrare utilizator
@@ -328,6 +329,12 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
       { autoCommit: true }
     );
 
+    // Trimite emailul de decizie către angajator
+    await sendEmployerDecisionEmail(
+      result.rows[0].EMAIL,
+      "approved"
+    );
+
     res.json({ message: "Cererea a fost aprobată." });
   } catch (err) {
     console.error("Eroare la aprobarea cererii:", err);
@@ -364,6 +371,13 @@ router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
       `UPDATE CereriAngajatori SET status = 'Rejected' WHERE id_cerere = :id`,
       [id_cerere],
       { autoCommit: true }
+    );
+
+    // Trimite emailul de decizie către angajator
+    await sendEmployerDecisionEmail(
+      result.rows[0].EMAIL,
+      "rejected",
+      req.body.motiv || "Cererea a fost respinsă fără un motiv specificat."
     );
 
     res.json({ message: "Cererea a fost respinsă." });
