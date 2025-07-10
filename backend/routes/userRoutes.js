@@ -3,12 +3,14 @@ const router = express.Router();
 const oracledb = require("oracledb");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+const authenticateToken = require("../middleware/authMiddleware");
 require("dotenv").config();
 const {
   sendResetEmail,
   sendEmployerRequestEmail,
   sendAdminNotificationEmail,
-  sendEmployerDecisionEmail
+  sendEmployerDecisionEmail,
 } = require("../mailer");
 
 // Înregistrare utilizator
@@ -87,7 +89,19 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Parolă incorectă." });
     }
 
+    // Creează token JWT
+    const token = jwt.sign(
+      {
+        id: user.ID_UTILIZATOR,
+        username: user.USERNAME,
+        role: user.TIP_UTILIZATOR,
+      },
+      process.env.SECRET_KEY,
+      { expiresIn: "2h" }
+    );
+
     res.json({
+      token: token,
       id: user.ID_UTILIZATOR,
       username: user.USERNAME,
       email: user.EMAIL,
@@ -330,10 +344,7 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
     );
 
     // Trimite emailul de decizie către angajator
-    await sendEmployerDecisionEmail(
-      result.rows[0].EMAIL,
-      "approved"
-    );
+    await sendEmployerDecisionEmail(result.rows[0].EMAIL, "approved");
 
     res.json({ message: "Cererea a fost aprobată." });
   } catch (err) {
@@ -386,6 +397,47 @@ router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
     res.status(500).json({ message: "Eroare server." });
   } finally {
     if (connection) await connection.close().catch(console.error);
+  }
+});
+
+router.get("/profil", authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
+  let connection;
+  try {
+    connection = await oracledb.getConnection();
+
+    const result = await connection.execute(
+      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil
+       FROM Utilizator
+       WHERE id_utilizator = :id_utilizator`,
+      [userId],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Utilizatorul nu a fost găsit." });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      id: user.ID_UTILIZATOR,
+      username: user.USERNAME,
+      email: user.EMAIL,
+      role: user.TIP_UTILIZATOR,
+      imagine_profil: user.IMAGINE_PROFIL,
+    });
+  } catch (err) {
+    console.error("Eroare la obținerea profilului:", err);
+    res.status(500).json({ message: "Eroare server." });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Eroare la închiderea conexiunii:", err);
+      }
+    }
   }
 });
 

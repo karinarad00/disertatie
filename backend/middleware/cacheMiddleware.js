@@ -8,14 +8,14 @@ const cacheMiddleware = (req, res, next) => {
   const cached = myCache.get(key);
 
   if (cached) {
-    console.log("📦 [node-cache HIT]", key);
+    // console.log("📦 [node-cache HIT]", key);
     return res.json(cached);
   }
 
   const originalJson = res.json.bind(res);
   res.json = (body) => {
     myCache.set(key, body);
-    console.log("📤 [node-cache SET]", key);
+    // console.log("📤 [node-cache SET]", key);
     return originalJson(body);
   };
 

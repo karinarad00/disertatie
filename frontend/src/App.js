@@ -10,6 +10,7 @@ import ChangePassword from "./pages/ChangePasswordPage";
 import CerereAngajator from "./pages/CerereAngajatorPage";
 import ApproveRequest from "./pages/ApproveRequest";
 import RejectRequest from "./pages/RejectRequest";
+import ProfilePage from "./pages/ProfilePage";
 import JobDetailsPage from "./pages/JobDetailsPage";
 import MapPage from "./pages/MapPage";
 
@@ -36,6 +37,7 @@ function App() {
           <Route path="/cerere-angajator" element={<CerereAngajator />} />
           <Route path="/:id/aproba" element={<ApproveRequest />} />
           <Route path="/:id/respinge" element={<RejectRequest />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/job/:id" element={<JobDetailsPage />} />
           <Route path="/map" element={<MapPage />} />
         </Routes>
