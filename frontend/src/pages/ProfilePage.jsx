@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import "../css/ProfilePage.css"; // 🔔 Import fișier CSS
 
 function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -50,35 +49,51 @@ function ProfilePage() {
       });
   }, []);
 
-  if (error) return <div className="error">{error}</div>;
-  if (!user) return <div className="loading">Se încarcă...</div>;
+  if (error)
+    return (
+      <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
+    );
+
+  if (!user)
+    return <div className="italic text-center mt-4">Se încarcă...</div>;
 
   return (
-    <div className="profile-container">
-      <h1>Profilul utilizatorului</h1>
-      <p>Nume utilizator: {user.username}</p>
-      <p>Email: {user.email}</p>
-      <p>Rol: {user.role}</p>
+    <div className="max-w-xl mx-auto p-6 bg-white shadow-md rounded-lg mt-6">
+      <h1 className="text-2xl font-bold mb-4">Profilul utilizatorului</h1>
+      <p className="mb-2">
+        <span className="font-semibold">Nume utilizator:</span> {user.username}
+      </p>
+      <p className="mb-2">
+        <span className="font-semibold">Email:</span> {user.email}
+      </p>
+      <p className="mb-4">
+        <span className="font-semibold">Rol:</span> {user.role}
+      </p>
+
       {user.imagine_profil && (
         <img
           src={user.imagine_profil}
           alt="Imagine profil"
-          className="profile-image"
+          className="w-40 h-40 object-cover rounded-lg mb-4"
         />
       )}
 
       {user.role === "Candidat" && (
-        <div className="button-group">
-          <button className="button">Încarcă CV</button>
-          <button className="button paid-button">
-            Analizează CV <span className="currency">€</span>
+        <div className="space-x-4">
+          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+            Încarcă CV
+          </button>
+          <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+            Analizează CV <span className="ml-1">€</span>
           </button>
         </div>
       )}
 
       {user.role === "Angajator" && (
-        <div className="button-group">
-          <button className="button">Promovează anunțurile firmei</button>
+        <div>
+          <button className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+            Promovează anunțurile firmei
+          </button>
         </div>
       )}
     </div>
