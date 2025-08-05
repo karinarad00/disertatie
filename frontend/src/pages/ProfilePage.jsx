@@ -93,6 +93,17 @@ function ProfilePage() {
       });
   }, []);
 
+  // Linkurile Stripe Payment Link
+  const paymentLinks = {
+    analizaCV: "https://buy.stripe.com/test_4gM6oG94WcRG7K2ef0cMM00",
+    primesteSugestii: "https://buy.stripe.com/test_fZu8wObd4aJy2pI1secMM01",
+  };
+
+  // Funcție de redirect către Stripe
+  const handlePaymentRedirect = (url) => {
+    window.location.href = url;
+  };
+
   if (error)
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
@@ -123,50 +134,55 @@ function ProfilePage() {
       )}
 
       {user.role === "Candidat" && (
-        <div className="space-y-4">
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
-            className="block"
-          />
+        <div className="space-y-4 items-center">
+          <div className="mb-4 flex justify-center">
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileChange}
+              className="block"
+            />
+            <button
+              className={`px-4 py-2 rounded text-white ${
+                selectedFile
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              } transition`}
+              disabled={!selectedFile || uploading}
+              onClick={handleUploadClick}
+            >
+              {user.cv_url ? "Actualizează CV" : "Încarcă CV"}
+            </button>
+          </div>
+          {/* Butoane plată */}
+          <div className="flex space-x-4 mb-4 justify-center">
+            {user.cv_url && (
+              <a
+                href={user.cv_url}
+                download
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-center"
+                role="button"
+              >
+                Descarcă CV
+              </a>
+            )}
 
-          <button
-            className={`px-4 py-2 rounded text-white ${
-              selectedFile
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
-            } transition`}
-            disabled={!selectedFile || uploading}
-            onClick={handleUploadClick}
-          >
-            {user.cv_url ? "Actualizează CV" : "Încarcă CV"}
-          </button>
+            <button
+              onClick={() => handlePaymentRedirect(paymentLinks.analizaCV)}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+            >
+              Analizează CV <span className="ml-1">€</span>
+            </button>
 
-          {user.cv_url && (
-            <div>
-              <p>
-                <a
-                  href={user.cv_url}
-                  download
-                  className="text-blue-600 underline"
-                >
-                  Descarcă CV
-                </a>
-              </p>
-              <embed
-                src={user.cv_url}
-                type="application/pdf"
-                width="100%"
-                height="600px"
-                style={{ border: "1px solid #ccc", borderRadius: "4px" }}
-              />
-            </div>
-          )}
-
-          <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
-            Analizează CV <span className="ml-1">€</span>
-          </button>
+            <button
+              onClick={() =>
+                handlePaymentRedirect(paymentLinks.primesteSugestii)
+              }
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+            >
+              Primește sugestii <span className="ml-1">€</span>
+            </button>
+          </div>
         </div>
       )}
 

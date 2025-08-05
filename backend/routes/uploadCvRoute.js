@@ -19,8 +19,8 @@ const objectStorageClient = new oci.objectstorage.ObjectStorageClient({
   authenticationDetailsProvider: provider,
 });
 
-const namespaceName = "frwj8kfylvyk";
-const bucketName = "cv-bucket";
+const namespaceName = process.env.NAMESPACE;
+const bucketName = process.env.BUCKET;
 
 router.post(
   "/upload-cv",
