@@ -3,6 +3,50 @@ import React, { useEffect, useState } from "react";
 function ProfilePage() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0] || null);
+  };
+
+  const handleUploadClick = async () => {
+    if (!selectedFile) return;
+
+    const userString = localStorage.getItem("user");
+    if (!userString) {
+      setError("Trebuie să fii autentificat pentru a încărca CV-ul.");
+      return;
+    }
+
+    const localUser = JSON.parse(userString);
+    const formData = new FormData();
+    formData.append("cv", selectedFile);
+
+    try {
+      setUploading(true);
+      const res = await fetch("http://localhost:5000/api/users/upload-cv", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localUser.token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
+
+      alert("CV încărcat cu succes!");
+      // Actualizează userul cu date noi (eventual fă fetch din nou)
+      setUser((prev) => ({ ...prev, cv_url: data.cv_url || true }));
+      setSelectedFile(null);
+      setError("");
+    } catch (err) {
+      setError("Eroare la încărcarea CV-ului: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const userString = localStorage.getItem("user");
@@ -79,10 +123,47 @@ function ProfilePage() {
       )}
 
       {user.role === "Candidat" && (
-        <div className="space-x-4">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-            Încarcă CV
+        <div className="space-y-4">
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileChange}
+            className="block"
+          />
+
+          <button
+            className={`px-4 py-2 rounded text-white ${
+              selectedFile
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-gray-400 cursor-not-allowed"
+            } transition`}
+            disabled={!selectedFile || uploading}
+            onClick={handleUploadClick}
+          >
+            {user.cv_url ? "Actualizează CV" : "Încarcă CV"}
           </button>
+
+          {user.cv_url && (
+            <div>
+              <p>
+                <a
+                  href={user.cv_url}
+                  download
+                  className="text-blue-600 underline"
+                >
+                  Descarcă CV
+                </a>
+              </p>
+              <embed
+                src={user.cv_url}
+                type="application/pdf"
+                width="100%"
+                height="600px"
+                style={{ border: "1px solid #ccc", borderRadius: "4px" }}
+              />
+            </div>
+          )}
+
           <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
             Analizează CV <span className="ml-1">€</span>
           </button>

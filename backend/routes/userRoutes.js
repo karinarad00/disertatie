@@ -72,7 +72,7 @@ router.post("/login", async (req, res) => {
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
-      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil
+      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url
        FROM Utilizator
        WHERE username = :username`,
       [username],
@@ -107,6 +107,7 @@ router.post("/login", async (req, res) => {
       email: user.EMAIL,
       role: user.TIP_UTILIZATOR,
       imagine_profil: user.IMAGINE_PROFIL,
+      cv_url: user.CV_URL,
     });
   } catch (error) {
     console.error("Eroare login:", error);
@@ -408,7 +409,7 @@ router.get("/profil", authenticateToken, async (req, res) => {
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
-      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil
+      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil, cv_url
        FROM Utilizator
        WHERE id_utilizator = :id_utilizator`,
       [userId],
@@ -426,6 +427,7 @@ router.get("/profil", authenticateToken, async (req, res) => {
       email: user.EMAIL,
       role: user.TIP_UTILIZATOR,
       imagine_profil: user.IMAGINE_PROFIL,
+      cv_url: user.CV_URL,
     });
   } catch (err) {
     console.error("Eroare la obținerea profilului:", err);
