@@ -35,10 +35,10 @@ export default function JobDetailsPage() {
         <strong>Companie:</strong> {job.DENUMIRE_COMPANIE || "Nedefinită"}
       </p>
       <p className="mb-2">
-        <strong>Locație:</strong> {job.LOCATIE || "Nedefinită"}
+        <strong>Locație:</strong> {job.ADRESA || "Nedefinită"}
       </p>
       <p className="mb-2">
-        <strong>Tip contract:</strong> {job.TIP_CONTRACT || "Nedefinit"}
+        <strong>Tip contract:</strong> {job.TIP_JOB || "Nedefinit"}
       </p>
       <p className="mb-2">
         <strong>Salariu:</strong> {job.SALARIU || "Nedefinit"}
