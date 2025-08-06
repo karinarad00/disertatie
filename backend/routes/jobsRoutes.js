@@ -10,7 +10,7 @@ router.get("/paid", async (req, res) => {
       FROM job j
       JOIN companie c ON j.ID_COMPANIE = c.ID_COMPANIE
       JOIN utilizator u ON u.ID_COMPANIE = c.ID_COMPANIE
-      WHERE u.SUBSCRIPTIE_ACTIVA = 1
+      WHERE u.SUBSCRIPTIE_ANGAJATORI = 1
     `);
     res.json(jobs);
   } catch (err) {
