@@ -9,6 +9,11 @@ const companyRoutes = require("./routes/companyRoutes");
 const cacheMiddleware = require("./middleware/cacheMiddleware");
 const uploadCvRoute = require("./routes/uploadCvRoute");
 
+// Setăm variabila de mediu pentru clientul Oracle
+process.env.LD_LIBRARY_PATH =
+  process.env.ORACLE_CLIENT_LIB_PATH +
+  (process.env.LD_LIBRARY_PATH ? ":" + process.env.LD_LIBRARY_PATH : "");
+
 const app = express();
 const port = 5000;
 
