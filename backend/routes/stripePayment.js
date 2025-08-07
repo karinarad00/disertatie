@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY); // setează în .env
+const stripe = require("stripe")(process.env.STRIPE_KEY); 
 const bodyParser = require("body-parser");
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;

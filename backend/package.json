@@ -5,7 +5,7 @@
   "main": "db.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "cd ../frontend && npm install && npm run build"
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,10 @@
     "oci-common": "^2.114.0",
     "oci-objectstorage": "^2.114.0",
     "oci-sdk": "^2.114.0",
-    "oracledb": "^6.9.0"
+    "oracledb": "^6.9.0",
+    "stripe": "^18.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }

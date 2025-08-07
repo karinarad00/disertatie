@@ -25,7 +25,7 @@ function ProfilePage() {
 
     try {
       setUploading(true);
-      const res = await fetch("http://localhost:5000/api/users/upload-cv", {
+      const res = await fetch("http://localhost:5000/api/cv/upload", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localUser.token}`,

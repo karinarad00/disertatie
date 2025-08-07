@@ -23,7 +23,7 @@ const namespaceName = process.env.NAMESPACE;
 const bucketName = process.env.BUCKET;
 
 router.post(
-  "/upload-cv",
+  "/upload",
   authenticateToken,
   upload.single("cv"),
   async (req, res) => {
