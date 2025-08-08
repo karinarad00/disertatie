@@ -4,8 +4,8 @@
   "description": "",
   "main": "db.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "concurrently \"nodemon server.js\" \"stripe listen --forward-to localhost:5000/api/stripe/webhook\"",
+    "dev": "node server.js"
   },
   "keywords": [],
   "author": "",

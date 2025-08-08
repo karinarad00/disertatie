@@ -88,4 +88,36 @@ router.post(
   }
 );
 
+router.post("/analyze-cv", authenticateToken, async (req, res) => {
+  const { cvText } = req.body;
+
+  if (!cvText || cvText.trim().length === 0) {
+    return res.status(400).json({ message: "Textul CV-ului este gol." });
+  }
+
+  try {
+    // Exemplu de analiză simplă cu AI gratuit mockat
+    // Poți înlocui cu apel real la un serviciu AI (ex: OpenAI, HuggingFace etc)
+    const recommendations = generateMockRecommendations(cvText);
+
+    res.json({ recommendations });
+  } catch (err) {
+    console.error("Eroare la analiza CV-ului:", err);
+    res.status(500).json({ message: "Eroare la analiza CV-ului." });
+  }
+});
+
+// Funcție mock pentru recomandări bazate pe textul CV-ului
+function generateMockRecommendations(cvText) {
+  // Simplu exemplu: recomandare bazată pe lungimea CV-ului
+  if (cvText.length < 300) {
+    return `CV-ul tău este destul de scurt. Ar fi bine să adaugi mai multe detalii despre experiențele și abilitățile tale.`;
+  }
+  if (!cvText.toLowerCase().includes("proiect")) {
+    return `Nu am găsit detalii despre proiecte în CV. Adaugă proiectele la care ai lucrat pentru a impresiona angajatorii.`;
+  }
+  return `CV-ul arată bine! Asigură-te că este structurat clar și fără greșeli de scriere.`;
+}
+
+
 module.exports = router;

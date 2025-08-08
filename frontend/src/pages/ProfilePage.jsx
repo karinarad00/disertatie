@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function ProfilePage() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const navigate = useNavigate();
+
+  const logoutAndRedirect = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    navigate("/login");
+  };
 
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0] || null);
@@ -33,11 +41,15 @@ function ProfilePage() {
         body: formData,
       });
 
+      if (res.status === 401) {
+        logoutAndRedirect();
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
 
       alert("CV încărcat cu succes!");
-      // Actualizează userul cu date noi (eventual fă fetch din nou)
       setUser((prev) => ({ ...prev, cv_url: data.cv_url || true }));
       setSelectedFile(null);
       setError("");
@@ -76,6 +88,11 @@ function ProfilePage() {
       },
     })
       .then(async (res) => {
+        if (res.status === 401) {
+          logoutAndRedirect();
+          return;
+        }
+
         const contentType = res.headers.get("Content-Type");
         if (!res.ok) throw new Error(await res.text());
         if (!contentType || !contentType.includes("application/json"))
@@ -83,25 +100,59 @@ function ProfilePage() {
         return res.json();
       })
       .then((data) => {
-        setUser(data);
-        setError("");
+        if (data) {
+          setUser(data);
+          setError("");
+        }
       })
       .catch((err) => {
         console.error("Eroare la fetch:", err);
         setError(err.message);
         setUser(null);
       });
-  }, []);
+  }, [navigate]);
 
-  // Linkurile Stripe Payment Link
-  const paymentLinks = {
-    analizaCV: "https://buy.stripe.com/test_4gM6oG94WcRG7K2ef0cMM00",
-    primesteSugestii: "https://buy.stripe.com/test_fZu8wObd4aJy2pI1secMM01",
-  };
+  const handleCheckout = async (prodType) => {
+    if (!user) {
+      setError("Trebuie să fii autentificat pentru a cumpăra.");
+      return;
+    }
 
-  // Funcție de redirect către Stripe
-  const handlePaymentRedirect = (url) => {
-    window.location.href = url;
+    try {
+      const userString = localStorage.getItem("user");
+      if (!userString) {
+        setError("Trebuie să fii autentificat.");
+        return;
+      }
+      const localUser = JSON.parse(userString);
+
+      const res = await fetch(
+        "http://localhost:5000/api/stripe/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localUser.token}`,
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            prodType,
+          }),
+        }
+      );
+
+      if (res.status === 401) {
+        logoutAndRedirect();
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Eroare la creare sesiune");
+
+      window.location.href = data.url; // Redirecționează către Stripe
+    } catch (err) {
+      setError("Eroare la inițierea plății: " + err.message);
+    }
   };
 
   if (error)
@@ -168,17 +219,35 @@ function ProfilePage() {
             )}
 
             <button
-              onClick={() => handlePaymentRedirect(paymentLinks.analizaCV)}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+              onClick={() => handleCheckout("analiza_cv")}
+              className={`px-4 py-2 rounded transition text-white ${
+                user.cv_url
+                  ? "bg-green-600 hover:bg-green-700 cursor-pointer"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+              disabled={!user.cv_url}
+              title={
+                !user.cv_url
+                  ? "Încarcă mai întâi CV-ul pentru a folosi această funcție"
+                  : ""
+              }
             >
               Analizează CV <span className="ml-1">€</span>
             </button>
 
             <button
-              onClick={() =>
-                handlePaymentRedirect(paymentLinks.primesteSugestii)
+              onClick={() => handleCheckout("primeste_sugestii")}
+              className={`px-4 py-2 rounded transition text-white ${
+                user.cv_url
+                  ? "bg-green-600 hover:bg-green-700 cursor-pointer"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+              disabled={!user.cv_url}
+              title={
+                !user.cv_url
+                  ? "Încarcă mai întâi CV-ul pentru a folosi această funcție"
+                  : ""
               }
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
             >
               Primește sugestii <span className="ml-1">€</span>
             </button>
