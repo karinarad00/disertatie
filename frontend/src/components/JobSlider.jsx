@@ -14,7 +14,7 @@ const officeBackgrounds = [
   "https://images.unsplash.com/photo-1685946973834-81f1c465ec0c?auto=format&fit=crop&w=800&q=80",
 ];
 
-export default function JobSlider({ jobs, loading = false }) {
+const JobSlider = ({ jobs, loading = false }) => {
   const settings = {
     dots: true,
     infinite: true,
@@ -59,3 +59,5 @@ export default function JobSlider({ jobs, loading = false }) {
     </div>
   );
 }
+
+export default JobSlider;

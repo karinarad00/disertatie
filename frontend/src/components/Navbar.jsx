@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/authSlice";
 
-export default function Navbar() {
+const Navbar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -50,3 +50,5 @@ export default function Navbar() {
     </nav>
   );
 }
+
+export default Navbar;
