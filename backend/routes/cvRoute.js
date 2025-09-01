@@ -8,12 +8,13 @@ const authenticateToken = require("../middleware/authMiddleware");
 const router = express.Router();
 const uploadDir = "uploads";
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// Creează folder temporar dacă nu există
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
+// Multer setup
 const upload = multer({ dest: uploadDir });
 
+// Oracle SDK setup
 const provider = new oci.common.ConfigFileAuthenticationDetailsProvider();
 const objectStorageClient = new oci.objectstorage.ObjectStorageClient({
   authenticationDetailsProvider: provider,
@@ -34,9 +35,39 @@ router.post(
       return res.status(400).json({ message: "Fișierul CV este obligatoriu." });
     }
 
-    const objectName = `cv-uri/${userId}_${file.originalname}`;
+    const connection = await oracledb.getConnection({
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      connectString: process.env.DB_CONNECT_STRING,
+    });
 
     try {
+      // Preiau CV-ul vechi din DB
+      const result = await connection.execute(
+        `SELECT cv_url FROM utilizator WHERE id_utilizator = :id`,
+        { id: userId }
+      );
+
+      if (result.rows.length > 0 && result.rows[0][0]) {
+        const oldUrl = result.rows[0][0];
+        const oldObjectName = oldUrl.split("/").pop(); // extrage numele obiectului
+
+        try {
+          await objectStorageClient.deleteObject({
+            namespaceName,
+            bucketName,
+            objectName: `cv-uri/${oldObjectName}`,
+          });
+          console.log("CV vechi șters din bucket:", oldObjectName);
+        } catch (deleteErr) {
+          console.warn("Nu am putut șterge CV-ul vechi:", deleteErr.message);
+        }
+      }
+
+      // Creează numele obiectului pentru CV-ul nou
+      const objectName = `cv-uri/${userId}_${file.originalname}`;
+
+      // Upload fișier în Object Storage
       await objectStorageClient.putObject({
         namespaceName,
         bucketName,
@@ -45,13 +76,12 @@ router.post(
         contentLength: fs.statSync(file.path).size,
       });
 
-      // Creează link pre-autentificat (valid 1 oră)
+      // Creează Preauthenticated Request (link temporar)
       const parDetails = {
         name: `cv-link-${userId}-${Date.now()}`,
-        bucketName: bucketName,
-        accessType: "ObjectRead", // permisiune citire
+        accessType: "ObjectRead",
+        timeExpires: new Date(Date.now() + 1000 * 60 * 60), // 1 oră
         objectName: objectName,
-        timeExpires: new Date(Date.now() + 1000 * 60 * 60), // 1 oră de valabilitate
       };
 
       const { preauthenticatedRequest } =
@@ -63,13 +93,7 @@ router.post(
 
       const preSignedUrl = `https://objectstorage.eu-frankfurt-1.oraclecloud.com${preauthenticatedRequest.accessUri}`;
 
-      // Salvează în baza de date link-ul semnat
-      const connection = await oracledb.getConnection({
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        connectString: process.env.DB_CONNECT_STRING,
-      });
-
+      // Salvează link-ul în baza de date
       await connection.execute(
         `UPDATE utilizator SET cv_url = :url WHERE id_utilizator = :id`,
         { url: preSignedUrl, id: userId },
@@ -84,40 +108,9 @@ router.post(
       fs.unlink(file.path, (err) => {
         if (err) console.error("Eroare la ștergerea fișierului temporar:", err);
       });
+      await connection.close();
     }
   }
 );
-
-router.post("/analyze-cv", authenticateToken, async (req, res) => {
-  const { cvText } = req.body;
-
-  if (!cvText || cvText.trim().length === 0) {
-    return res.status(400).json({ message: "Textul CV-ului este gol." });
-  }
-
-  try {
-    // Exemplu de analiză simplă cu AI gratuit mockat
-    // Poți înlocui cu apel real la un serviciu AI (ex: OpenAI, HuggingFace etc)
-    const recommendations = generateMockRecommendations(cvText);
-
-    res.json({ recommendations });
-  } catch (err) {
-    console.error("Eroare la analiza CV-ului:", err);
-    res.status(500).json({ message: "Eroare la analiza CV-ului." });
-  }
-});
-
-// Funcție mock pentru recomandări bazate pe textul CV-ului
-function generateMockRecommendations(cvText) {
-  // Simplu exemplu: recomandare bazată pe lungimea CV-ului
-  if (cvText.length < 300) {
-    return `CV-ul tău este destul de scurt. Ar fi bine să adaugi mai multe detalii despre experiențele și abilitățile tale.`;
-  }
-  if (!cvText.toLowerCase().includes("proiect")) {
-    return `Nu am găsit detalii despre proiecte în CV. Adaugă proiectele la care ai lucrat pentru a impresiona angajatorii.`;
-  }
-  return `CV-ul arată bine! Asigură-te că este structurat clar și fără greșeli de scriere.`;
-}
-
 
 module.exports = router;

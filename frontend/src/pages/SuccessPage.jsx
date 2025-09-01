@@ -9,7 +9,7 @@ const SuccessPage = () => {
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
-    console.log(sessionId);
+    
     if (!sessionId) {
       // fallback dacă nu există sesiune
       setProductType("pagina-produs");

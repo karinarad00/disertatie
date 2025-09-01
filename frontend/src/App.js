@@ -27,7 +27,7 @@ function App() {
       setUser(JSON.parse(savedUser));
     }
   }, []);
-
+  
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar user={user} />

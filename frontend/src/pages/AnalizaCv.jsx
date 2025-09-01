@@ -1,29 +1,27 @@
 import React, { useState, useEffect } from "react";
 
-const AnalizaCv = ({ userId }) => {
+const AnalizaCv = () => {
+  const [userId, setUserId] = useState(null);
+  const [token, setToken] = useState("");
   const [cvUrl, setCvUrl] = useState("");
   const [cvText, setCvText] = useState("");
   const [recommendations, setRecommendations] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Preiau URL-ul CV din backend
+  // Preluare userId și token din localStorage
   useEffect(() => {
-    const fetchCvUrl = async () => {
-      try {
-        const res = await fetch(`/api/users/${userId}/cv-url`);
-        if (!res.ok) throw new Error("Nu am putut prelua CV-ul");
-        const data = await res.json();
-        setCvUrl(data.cvUrl);
-      } catch (err) {
-        setError("Eroare la preluarea CV-ului.");
-      }
-    };
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+ 
+      setUserId(parsed.id || parsed.id_utilizator);
+      setToken(parsed.token);
+      setCvUrl(parsed.cv_url);
+    }
+  }, []);
 
-    fetchCvUrl();
-  }, [userId]);
-
-  // Preiau textul CV din link (presupunem e text simplu)
+  // Preluare textul CV-ului
   useEffect(() => {
     if (!cvUrl) return;
 
@@ -34,6 +32,7 @@ const AnalizaCv = ({ userId }) => {
         const text = await res.text();
         setCvText(text);
       } catch (err) {
+        console.error(err);
         setError("Eroare la citirea CV-ului.");
       }
     };
@@ -53,14 +52,23 @@ const AnalizaCv = ({ userId }) => {
     try {
       const res = await fetch("/api/analyze-cv", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ cvText }),
       });
 
-      if (!res.ok) throw new Error("Eroare la analiza CV-ului");
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Răspuns neașteptat:", text);
+        throw new Error("Eroare la analiza CV-ului");
+      }
+
       const data = await res.json();
       setRecommendations(data.recommendations);
     } catch (err) {
+      console.error(err);
       setError("A apărut o eroare la analiza CV-ului.");
     } finally {
       setLoading(false);

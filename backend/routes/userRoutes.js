@@ -12,6 +12,7 @@ const {
   sendAdminNotificationEmail,
   sendEmployerDecisionEmail,
 } = require("../mailer");
+const { use } = require("react");
 
 // Înregistrare utilizator
 router.post("/register", async (req, res) => {
@@ -443,35 +444,6 @@ router.get("/profil", authenticateToken, async (req, res) => {
         console.error("Eroare la închiderea conexiunii:", err);
       }
     }
-  }
-});
-
-// Preluarea URL-ului CV-ului
-router.get("/:id/cv-url", authenticateToken, async (req, res) => {
-  const userId = req.params.id;
-
-  try {
-    const connection = await oracledb.getConnection({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      connectString: process.env.DB_CONNECT_STRING,
-    });
-
-    const result = await connection.execute(
-      `SELECT cv_url FROM utilizator WHERE id_utilizator = :id`,
-      { id: userId }
-    );
-
-    await connection.close();
-
-    if (result.rows.length === 0 || !result.rows[0][0]) {
-      return res.status(404).json({ message: "CV-ul nu a fost găsit." });
-    }
-
-    res.json({ cvUrl: result.rows[0][0] });
-  } catch (err) {
-    console.error("Eroare la preluarea URL-ului CV:", err);
-    res.status(500).json({ message: "Eroare internă server." });
   }
 });
 

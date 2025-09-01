@@ -33,6 +33,7 @@ function ProfilePage() {
 
     try {
       setUploading(true);
+
       const res = await fetch("http://localhost:5000/api/cv/upload", {
         method: "POST",
         headers: {
@@ -49,10 +50,12 @@ function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
 
-      alert("CV încărcat cu succes!");
-      setUser((prev) => ({ ...prev, cv_url: data.cv_url || true }));
+      // Actualizează instant starea user și cv_url
+      setUser((prev) => ({ ...prev, cv_url: data.url }));
       setSelectedFile(null);
       setError("");
+
+      alert("CV încărcat cu succes!");
     } catch (err) {
       setError("Eroare la încărcarea CV-ului: " + err.message);
     } finally {
@@ -173,7 +176,7 @@ function ProfilePage() {
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
-  console.log(user);
+  
   if (!user)
     return <div className="italic text-center mt-4">Se încarcă...</div>;
 
@@ -263,7 +266,7 @@ function ProfilePage() {
                   : ""
               }
             >
-              Primește sugestii <span className="ml-1">€</span>
+              Sugestii Joburi <span className="ml-1">€</span>
             </button>
           </div>
         </div>
