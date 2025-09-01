@@ -16,7 +16,13 @@ const port = 5000;
 // Middleware
 app.use(cacheMiddleware);
 
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
+
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/stripe/webhook") {
     next();

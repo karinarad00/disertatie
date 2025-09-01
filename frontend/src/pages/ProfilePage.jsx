@@ -119,14 +119,14 @@ function ProfilePage() {
     }
 
     // Dacă are deja subscripția activă, redirecționează direct
-    if (prodType === "analiza_cv" && user.SUBSCRIPTIE_CV === 1) {
+    if (prodType === "analiza_cv" && user.subscriptie_cv === 1) {
       navigate("/analiza-cv");
       return;
     }
 
     if (
       prodType === "primeste_sugestii" &&
-      user.SUBSCRIPTIE_RECOMANDARI === 1
+      user.subscriptie_recomandari === 1
     ) {
       navigate("/sugestii");
       return;
@@ -173,7 +173,7 @@ function ProfilePage() {
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
-  
+  console.log(user);
   if (!user)
     return <div className="italic text-center mt-4">Se încarcă...</div>;
 
