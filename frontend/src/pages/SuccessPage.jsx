@@ -9,15 +9,15 @@ const SuccessPage = () => {
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
-console.log("Session ID:", sessionId);
+    console.log(sessionId);
     if (!sessionId) {
-      // fallback
+      // fallback dacă nu există sesiune
       setProductType("pagina-produs");
       setLoading(false);
       return;
     }
 
-    // Cere backend-ului detalii sesiune
+    // Cere backend-ului detalii sesiune Stripe
     fetch(`/api/stripe/session/${sessionId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -30,10 +30,10 @@ console.log("Session ID:", sessionId);
   useEffect(() => {
     if (!loading && productType) {
       const timer = setTimeout(() => {
-        if (productType === "analiza") {
-          navigate("/pagina-analiza");
-        } else if (productType === "recomandari") {
-          navigate("/pagina-recomandari");
+        if (productType === "analiza_cv") {
+          navigate("/analiza-cv");
+        } else if (productType === "primeste_sugestii") {
+          navigate("/sugestii");
         } else {
           navigate("/pagina-produs");
         }
@@ -55,9 +55,8 @@ console.log("Session ID:", sessionId);
       </p>
       <button
         onClick={() => {
-          if (productType === "analiza") navigate("/pagina-analiza");
-          else if (productType === "recomandari")
-            navigate("/pagina-recomandari");
+          if (productType === "analiza_cv") navigate("/analiza-cv");
+          else if (productType === "primeste_sugestii") navigate("/sugestii");
           else navigate("/pagina-produs");
         }}
         className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition"

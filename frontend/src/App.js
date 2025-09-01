@@ -15,7 +15,8 @@ import JobDetailsPage from "./pages/JobDetailsPage";
 import MapPage from "./pages/MapPage";
 import SuccessPage from "./pages/SuccessPage";
 import CancelPage from "./pages/CancelPage";
-import AnalizaPage from "./pages/AnalizaPage";
+import AnalizaCv from "./pages/AnalizaCv";
+import Sugestii from "./pages/Sugestii";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -45,7 +46,8 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/cancel" element={<CancelPage />} />
-          <Route path="/analiza" element={<AnalizaPage />} />
+          <Route path="/analiza-cv" element={<AnalizaCv />} />
+          <Route path="/sugestii" element={<Sugestii />} />
         </Routes>
       </main>
       <Footer />

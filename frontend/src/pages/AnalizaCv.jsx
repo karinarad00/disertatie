@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const AnalizaPage = ({ userId }) => {
+const AnalizaCv = ({ userId }) => {
   const [cvUrl, setCvUrl] = useState("");
   const [cvText, setCvText] = useState("");
   const [recommendations, setRecommendations] = useState("");
@@ -103,4 +103,4 @@ const AnalizaPage = ({ userId }) => {
   );
 };
 
-export default AnalizaPage;
+export default AnalizaCv;

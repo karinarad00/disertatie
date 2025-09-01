@@ -27,7 +27,7 @@ const CurrentLocationMarker = ({ position }) => {
   );
 };
 
-export default function MapPage() {
+const MapPage = () => {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState("");
@@ -198,3 +198,5 @@ export default function MapPage() {
     </div>
   );
 }
+
+export default MapPage;

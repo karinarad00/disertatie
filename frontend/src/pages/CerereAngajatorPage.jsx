@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-export default function CerereAngajatorPage() {
+const CerereAngajatorPage = () => {
   const [companii, setCompanii] = useState([]);
   const [formData, setFormData] = useState({
     id_companie: "",
@@ -142,3 +142,5 @@ export default function CerereAngajatorPage() {
     </div>
   );
 }
+
+export default CerereAngajatorPage;

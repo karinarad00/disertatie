@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
-export default function JobDetailsPage() {
+const JobDetailsPage = () => {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,3 +53,5 @@ export default function JobDetailsPage() {
     </div>
   );
 }
+
+export default JobDetailsPage;

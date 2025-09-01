@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-export default function RegisterPage() {
+const RegisterPage = () => {
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -97,3 +97,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+export default RegisterPage;

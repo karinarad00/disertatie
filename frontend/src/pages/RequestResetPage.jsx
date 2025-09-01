@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function RequestReset() {
+const RequestReset = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
@@ -40,3 +40,5 @@ export default function RequestReset() {
     </form>
   );
 }
+
+export default RequestReset;

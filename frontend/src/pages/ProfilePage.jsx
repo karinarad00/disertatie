@@ -118,6 +118,20 @@ function ProfilePage() {
       return;
     }
 
+    // Dacă are deja subscripția activă, redirecționează direct
+    if (prodType === "analiza_cv" && user.SUBSCRIPTIE_CV === 1) {
+      navigate("/analiza-cv");
+      return;
+    }
+
+    if (
+      prodType === "primeste_sugestii" &&
+      user.SUBSCRIPTIE_RECOMANDARI === 1
+    ) {
+      navigate("/sugestii");
+      return;
+    }
+
     try {
       const userString = localStorage.getItem("user");
       if (!userString) {
@@ -149,7 +163,7 @@ function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la creare sesiune");
 
-      window.location.href = data.url; // Redirecționează către Stripe
+      window.location.href = data.url;
     } catch (err) {
       setError("Eroare la inițierea plății: " + err.message);
     }
@@ -159,7 +173,7 @@ function ProfilePage() {
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
-
+  
   if (!user)
     return <div className="italic text-center mt-4">Se încarcă...</div>;
 

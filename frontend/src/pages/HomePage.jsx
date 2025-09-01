@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import JobSlider from "../components/JobSlider";
 import JobList from "../components/JobList";
 
-export default function HomePage() {
+const HomePage = () => {
   const [paidJobs, setPaidJobs] = useState([]);
   const [allJobs, setAllJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
@@ -171,3 +171,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+export default HomePage;

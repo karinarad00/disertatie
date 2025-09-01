@@ -40,7 +40,7 @@ router.post("/create-checkout-session", async (req, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: product.priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: product.successUrl,
+      success_url: `${product.successUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: product.cancelUrl,
       metadata: {
         userId,
@@ -84,19 +84,21 @@ router.post(
       try {
         if (productId === process.env.PRODUCT_ANALIZA_CV) {
           await executeQuery(
-            "UPDATE utilizator SET subscriptie_cv = 1 WHERE id = :id",
-            { id: userId }
+            "UPDATE utilizator SET subscriptie_cv = 1 WHERE id_utilizator = :id",
+            { id: userId },
+            { autoCommit: true } // commit automat în Oracle
           );
-          console.log(`Utilizator ${userId} a cumpărat Analiza CV`);
+          console.log(`✅ Utilizator ${userId} a cumpărat Analiza CV`);
         } else if (productId === process.env.PRODUCT_SUGESTII) {
           await executeQuery(
-            "UPDATE utilizator SET subscriptie_recomandari = 1 WHERE id = :id",
-            { id: userId }
+            "UPDATE utilizator SET subscriptie_recomandari = 1 WHERE id_utilizator = :id",
+            { id: userId },
+            { autoCommit: true } // commit automat în Oracle
           );
-          console.log(`Utilizator ${userId} a cumpărat Sugestii`);
+          console.log(`✅ Utilizator ${userId} a cumpărat Sugestii`);
         }
       } catch (dbErr) {
-        console.error("Eroare DB:", dbErr);
+        console.error("❌ Eroare DB:", dbErr);
       }
     }
 

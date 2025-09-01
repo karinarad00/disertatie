@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 
-export default function ChangePassword() {
+const ChangePassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
   const query = new URLSearchParams(useLocation().search);
@@ -48,3 +48,5 @@ export default function ChangePassword() {
     </form>
   );
 }
+
+export default ChangePassword;
