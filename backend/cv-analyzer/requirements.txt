@@ -1,5 +1,8 @@
 fastapi
 uvicorn
-pdfplumber
+pydantic
 requests
-scikit-learn
+pdfplumber
+spacy
+python-dotenv
+cx_Oracle

@@ -51,7 +51,11 @@ function ProfilePage() {
       if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
 
       // Actualizează instant starea user și cv_url
-      setUser((prev) => ({ ...prev, cv_url: data.url }));
+      setUser((prev) => {
+        const updatedUser = { ...prev, cv_url: data.url };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        return updatedUser;
+      });
       setSelectedFile(null);
       setError("");
 
@@ -176,7 +180,7 @@ function ProfilePage() {
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
-  
+
   if (!user)
     return <div className="italic text-center mt-4">Se încarcă...</div>;
 

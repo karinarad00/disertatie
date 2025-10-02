@@ -18,19 +18,18 @@ const AnalizaCv = () => {
     }
   }, []);
 
-  // 🔹 Verificare existență CV
+  // 🔹 Declanșează analiza automat dacă există CV
   useEffect(() => {
     if (cvUrl) {
-      setStatusMsg("CV încărcat cu succes. Apasă pe buton pentru analiză.");
+      setStatusMsg("CV încărcat. Analiza începe automat...");
+      handleAnalyze();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cvUrl]);
 
-  // 🔹 Trimitere către backend pentru analiză
+  // 🔹 Funcție analiză
   const handleAnalyze = async () => {
-    if (!cvUrl) {
-      setError("Nu există un CV încărcat.");
-      return;
-    }
+    if (!cvUrl) return;
 
     setError("");
     setLoading(true);
@@ -43,7 +42,7 @@ const AnalizaCv = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ cvUrl }), // backend va descărca și analiza PDF-ul
+        body: JSON.stringify({ cvUrl }),
       });
 
       if (!res.ok) {
@@ -55,38 +54,48 @@ const AnalizaCv = () => {
       setRecommendations(
         data.recommendations || "Nu au fost găsite sugestii de îmbunătățire."
       );
+      setStatusMsg("Analiza finalizată!");
     } catch (err) {
       console.error("Eroare frontend:", err);
       setError("A apărut o eroare la analiza CV-ului.");
+      setStatusMsg("");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow mt-10">
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow mt-10 relative">
       <h1 className="text-3xl font-bold mb-6">Analiză CV</h1>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       {!cvUrl && <p className="mb-4">Nu ai încărcat încă un CV.</p>}
 
-      {statusMsg && (
-        <>
-          <div className="p-4 border border-gray-200 rounded bg-gray-50 mb-4">
-            <p className="text-gray-600">{statusMsg}</p>
-          </div>
+      {cvUrl && (
+        <div className="mb-6 relative">
+          {/* PDF Preview */}
+          <iframe
+            src={cvUrl}
+            title="CV Preview"
+            className="w-full h-96 border rounded"
+          ></iframe>
 
-          <button
-            className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-50"
-            onClick={handleAnalyze}
-            disabled={loading}
-          >
-            {loading
-              ? "Se analizează..."
-              : "Primește recomandări de îmbunătățire"}
-          </button>
-        </>
+          {/* Overlay during analysis */}
+          {loading && (
+            <div className="absolute top-0 left-0 w-full h-96 bg-black bg-opacity-30 flex items-center justify-center rounded">
+              <span className="text-white text-lg font-semibold">
+                Analiza CV-ului în curs...
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {statusMsg && (
+        <div className="p-4 border border-gray-200 rounded bg-gray-50 mb-4">
+          <p className="text-gray-600">{statusMsg}</p>
+        </div>
       )}
 
       {recommendations && (
