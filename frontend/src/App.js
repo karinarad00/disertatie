@@ -46,7 +46,7 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/cancel" element={<CancelPage />} />
-          <Route path="/analiza-cv" element={<AnalizaCv />} />
+          <Route path="/analiza" element={<AnalizaCv />} />
           <Route path="/sugestii" element={<Sugestii />} />
         </Routes>
       </main>

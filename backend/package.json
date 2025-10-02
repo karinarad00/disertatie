@@ -4,7 +4,7 @@
   "description": "",
   "main": "db.js",
   "scripts": {
-    "start": "concurrently \"nodemon server.js\" \"stripe listen --forward-to localhost:5000/api/stripe/webhook\"",
+    "start": "concurrently \"cd cv-analyzer && uvicorn app:app --reload --port 8000\" \"nodemon server.js\" \"stripe listen --forward-to localhost:5000/api/stripe/webhook\"",
     "dev": "node server.js"
   },
   "keywords": [],

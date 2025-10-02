@@ -123,7 +123,7 @@ function ProfilePage() {
 
     // Dacă are deja subscripția activă, redirecționează direct
     if (prodType === "analiza_cv" && user.subscriptie_cv === 1) {
-      navigate("/analiza-cv");
+      navigate("/analiza");
       return;
     }
 

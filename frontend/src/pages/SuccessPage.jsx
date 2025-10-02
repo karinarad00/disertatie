@@ -31,7 +31,7 @@ const SuccessPage = () => {
     if (!loading && productType) {
       const timer = setTimeout(() => {
         if (productType === "analiza_cv") {
-          navigate("/analiza-cv");
+          navigate("/analiza");
         } else if (productType === "primeste_sugestii") {
           navigate("/sugestii");
         } else {
@@ -55,7 +55,7 @@ const SuccessPage = () => {
       </p>
       <button
         onClick={() => {
-          if (productType === "analiza_cv") navigate("/analiza-cv");
+          if (productType === "analiza_cv") navigate("/analiza");
           else if (productType === "primeste_sugestii") navigate("/sugestii");
           else navigate("/pagina-produs");
         }}

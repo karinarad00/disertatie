@@ -42,7 +42,7 @@ router.post(
     });
 
     try {
-      // Preiau CV-ul vechi din DB
+      // Șterge CV-ul vechi dacă există
       const result = await connection.execute(
         `SELECT cv_url FROM utilizator WHERE id_utilizator = :id`,
         { id: userId }
@@ -50,7 +50,7 @@ router.post(
 
       if (result.rows.length > 0 && result.rows[0][0]) {
         const oldUrl = result.rows[0][0];
-        const oldObjectName = oldUrl.split("/").pop(); // extrage numele obiectului
+        const oldObjectName = oldUrl.split("/").pop();
 
         try {
           await objectStorageClient.deleteObject({
@@ -64,7 +64,7 @@ router.post(
         }
       }
 
-      // Creează numele obiectului pentru CV-ul nou
+      // Numele obiectului pentru CV-ul nou
       const objectName = `cv-uri/${userId}_${file.originalname}`;
 
       // Upload fișier în Object Storage
@@ -76,11 +76,11 @@ router.post(
         contentLength: fs.statSync(file.path).size,
       });
 
-      // Creează Preauthenticated Request (link temporar)
+      // Creează Preauthenticated Request (link temporar extins la 24 ore)
       const parDetails = {
         name: `cv-link-${userId}-${Date.now()}`,
         accessType: "ObjectRead",
-        timeExpires: new Date(Date.now() + 1000 * 60 * 60), // 1 oră
+        timeExpires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 ore
         objectName: objectName,
       };
 
@@ -112,5 +112,50 @@ router.post(
     }
   }
 );
+
+
+router.post("/analyze", async (req, res) => {
+  try {
+    const { cvUrl } = req.body;
+    if (!cvUrl) {
+      return res.status(400).json({ error: "Lipsește cvUrl" });
+    }
+
+    // Trimite către microserviciul Python
+    const pyRes = await fetch("http://127.0.0.1:8000/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cvUrl }),
+    });
+
+    const data = await pyRes.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Eroare backend analiza CV:", err);
+    res.status(500).json({ error: "Eroare internă la analiza CV-ului" });
+  }
+});
+
+router.post("/suggestions", async (req, res) => {
+  const { cvUrl } = req.body;
+
+  if (!cvUrl)
+    return res.status(400).json({ error: "Lipsește URL-ul CV-ului." });
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/suggestions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cvUrl }),
+    });
+
+    const data = await response.json();
+    res.json({ jobs: data.jobs });
+  } catch (err) {
+    console.error("Eroare sugestii:", err);
+    res.status(500).json({ error: "Eroare la generarea sugestiilor." });
+  }
+});
+
 
 module.exports = router;

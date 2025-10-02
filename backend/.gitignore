@@ -22,3 +22,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#others
+cv-analyzer/__pycache__/
+cv-analyzer/temp.pdf

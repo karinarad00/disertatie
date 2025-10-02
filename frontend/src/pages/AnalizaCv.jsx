@@ -1,74 +1,62 @@
 import React, { useState, useEffect } from "react";
 
 const AnalizaCv = () => {
-  const [userId, setUserId] = useState(null);
   const [token, setToken] = useState("");
   const [cvUrl, setCvUrl] = useState("");
-  const [cvText, setCvText] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
   const [recommendations, setRecommendations] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Preluare userId și token din localStorage
+  // 🔹 Preluare date utilizator din localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
- 
-      setUserId(parsed.id || parsed.id_utilizator);
       setToken(parsed.token);
       setCvUrl(parsed.cv_url);
     }
   }, []);
 
-  // Preluare textul CV-ului
+  // 🔹 Verificare existență CV
   useEffect(() => {
-    if (!cvUrl) return;
-
-    const fetchCvText = async () => {
-      try {
-        const res = await fetch(cvUrl);
-        if (!res.ok) throw new Error("Nu am putut citi fișierul CV");
-        const text = await res.text();
-        setCvText(text);
-      } catch (err) {
-        console.error(err);
-        setError("Eroare la citirea CV-ului.");
-      }
-    };
-
-    fetchCvText();
+    if (cvUrl) {
+      setStatusMsg("CV încărcat cu succes. Apasă pe buton pentru analiză.");
+    }
   }, [cvUrl]);
 
+  // 🔹 Trimitere către backend pentru analiză
   const handleAnalyze = async () => {
-    if (!cvText.trim()) {
-      setError("CV-ul este gol.");
+    if (!cvUrl) {
+      setError("Nu există un CV încărcat.");
       return;
     }
+
     setError("");
     setLoading(true);
     setRecommendations("");
 
     try {
-      const res = await fetch("/api/analyze-cv", {
+      const res = await fetch("http://localhost:5000/api/cv/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ cvText }),
+        body: JSON.stringify({ cvUrl }), // backend va descărca și analiza PDF-ul
       });
 
       if (!res.ok) {
         const text = await res.text();
-        console.error("Răspuns neașteptat:", text);
-        throw new Error("Eroare la analiza CV-ului");
+        throw new Error(text || "Eroare la analiza CV-ului");
       }
 
       const data = await res.json();
-      setRecommendations(data.recommendations);
+      setRecommendations(
+        data.recommendations || "Nu au fost găsite sugestii de îmbunătățire."
+      );
     } catch (err) {
-      console.error(err);
+      console.error("Eroare frontend:", err);
       setError("A apărut o eroare la analiza CV-ului.");
     } finally {
       setLoading(false);
@@ -77,34 +65,36 @@ const AnalizaCv = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow mt-10">
-      <h1 className="text-3xl font-bold mb-6">Analiză și Recomandări CV</h1>
+      <h1 className="text-3xl font-bold mb-6">Analiză CV</h1>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      {!cvText && !error && <p className="mb-4">Se încarcă CV-ul tău...</p>}
+      {!cvUrl && <p className="mb-4">Nu ai încărcat încă un CV.</p>}
 
-      {cvText && (
+      {statusMsg && (
         <>
-          <textarea
-            rows="10"
-            className="w-full p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-            value={cvText}
-            onChange={(e) => setCvText(e.target.value)}
-          />
+          <div className="p-4 border border-gray-200 rounded bg-gray-50 mb-4">
+            <p className="text-gray-600">{statusMsg}</p>
+          </div>
+
           <button
             className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-50"
             onClick={handleAnalyze}
             disabled={loading}
           >
-            {loading ? "Analizăm..." : "Primește recomandări"}
+            {loading
+              ? "Se analizează..."
+              : "Primește recomandări de îmbunătățire"}
           </button>
         </>
       )}
 
       {recommendations && (
-        <div className="mt-8 p-4 bg-gray-100 rounded-md whitespace-pre-line text-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">Recomandări:</h2>
-          <p>{recommendations}</p>
+        <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-md text-gray-800">
+          <h2 className="text-2xl font-semibold mb-2">
+            Recomandări de îmbunătățire:
+          </h2>
+          <p className="whitespace-pre-line">{recommendations}</p>
         </div>
       )}
     </div>
