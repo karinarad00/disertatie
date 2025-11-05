@@ -1,14 +1,30 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import requests, tempfile, os
+import requests, tempfile, os, json
 import pdfplumber
 import spacy
 from dotenv import load_dotenv
 import cx_Oracle
+import subprocess
 
+# Load environment variables from .env
 load_dotenv()
 
 app = FastAPI()
+
+# ---------------- CORS setup ----------------
+origins = [
+    "http://localhost:3000",  
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load spaCy once
 nlp = spacy.load("en_core_web_sm")
@@ -22,13 +38,32 @@ INSTANT_CLIENT_LIB_DIR = os.getenv("INSTANT_CLIENT_LIB_DIR")
 if INSTANT_CLIENT_LIB_DIR:
     cx_Oracle.init_oracle_client(lib_dir=INSTANT_CLIENT_LIB_DIR)
 
+# Ollama path from environment (.env)
+OLLAMA_PATH = os.getenv("OLLAMA_PATH")
+
 def get_oracle_connection():
     return cx_Oracle.connect(user=ORACLE_USER, password=ORACLE_PASSWORD, dsn=ORACLE_DSN)
+
+
+def ollama_chat(prompt: str, model: str = "phi3") -> str:
+    """
+    Runs a local Ollama model and returns the model response text.
+    Requires Ollama to be installed and model pulled (e.g. `ollama pull phi3`).
+    """
+    result = subprocess.run(
+        [OLLAMA_PATH, "run", model],
+        input=prompt.encode("utf-8"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    output = result.stdout.decode("utf-8").strip()
+    return output
+
 
 class CVRequest(BaseModel):
     cvUrl: str
 
-# ---------- Helper functions ----------
+
 def extract_text_from_pdf(path):
     text = ""
     with pdfplumber.open(path) as pdf:
@@ -38,62 +73,43 @@ def extract_text_from_pdf(path):
                 text += page_text + "\n"
     return text
 
-def parse_resume(text):
-    doc = nlp(text)
-    # naive extraction of skills (customize as needed)
-    skills = [token.text for token in doc if token.pos_ == "NOUN"]
-    # naive extraction of organizations as work experience
-    experience = [ent.text for ent in doc.ents if ent.label_ == "ORG"]
-    # naive extraction of education as ORG with "University"/"College"
-    education = [ent.text for ent in doc.ents if "University" in ent.text or "College" in ent.text]
 
-    return {
-        "skills": skills,
-        "experience": experience,
-        "education": education,
-        "text": text
-    }
-
-# ---------- Endpoints ----------
+# ---------- /analyze (AI improvement suggestions) ----------
 @app.post("/analyze")
 def analyze_cv(req: CVRequest):
-    # Download PDF
     response = requests.get(req.cvUrl)
     if response.status_code != 200:
         return {"error": "Nu am putut descărca fișierul PDF"}
 
-    # Save temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(response.content)
         tmp_path = tmp.name
 
     try:
         text = extract_text_from_pdf(tmp_path)
-        data = parse_resume(text)
     except Exception as e:
         os.unlink(tmp_path)
         return {"error": f"Eroare la analiză: {str(e)}"}
     finally:
         os.unlink(tmp_path)
 
-    recomandari = []
+    prompt = f"""
+    Analizează următorul CV și oferă sugestii clare pentru îmbunătățire.
+    Structura răspunsului:
+    - Puncte tari
+    - Puncte slabe
+    - Sugestii concrete de îmbunătățire
 
-    if not data.get("skills"):
-        recomandari.append("Nu au fost detectate skill-uri. Asigură-te că le menționezi clar în CV.")
-    if not data.get("experience"):
-        recomandari.append("Include detalii despre experiența profesională, roluri și realizări concrete.")
-    if not data.get("education"):
-        recomandari.append("Adaugă secțiune de Educație, cu diplome și instituții.")
+    CV:
+    {text}
+    """
 
-    text_length = len(data["text"].split())
-    if text_length < 300:
-        recomandari.append("CV-ul pare scurt. Detaliază experiența și skill-urile pentru a fi mai complet.")
+    ai_response = ollama_chat(prompt)
 
-    if not recomandari:
-        recomandari.append("CV-ul tău arată bine conform analizei AI curente!")
+    return {"recommendations": ai_response}
 
-    return {"recommendations": "\n".join(recomandari)}
 
+# ---------- /suggestions (AI + Oracle job match) ----------
 @app.post("/suggestions")
 async def suggestions(request: Request):
     data = await request.json()
@@ -101,7 +117,6 @@ async def suggestions(request: Request):
     if not cv_url:
         return {"error": "cvUrl missing"}
 
-    # Step 1️⃣ Download and extract text from CV
     try:
         response = requests.get(cv_url)
         if response.status_code != 200:
@@ -112,17 +127,13 @@ async def suggestions(request: Request):
             tmp_path = tmp.name
 
         text = extract_text_from_pdf(tmp_path)
-        resume_data = parse_resume(text)
     except Exception as e:
         return {"error": f"Eroare la analiza CV-ului: {str(e)}"}
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
-    # Step 2️⃣ Extract skills for filtering
-    cv_skills = [skill.lower() for skill in resume_data.get("skills", [])]
-
-    # Step 3️⃣ Fetch jobs from Oracle
+    # Connect to Oracle and fetch jobs
     try:
         conn = get_oracle_connection()
         cursor = conn.cursor()
@@ -144,18 +155,22 @@ async def suggestions(request: Request):
         cursor.close()
         conn.close()
 
-    # Step 4️⃣ Filter jobs based on CV skills (simple match)
-    filtered_jobs = []
-    for job in all_jobs:
-        job_text = " ".join([
-            str(job.get("TITLU", "")),
-            str(job.get("DOMENIU", "")),
-            str(job.get("DENUMIRE_COMPANIE", ""))
-        ]).lower()
+    job_data_text = "\n".join([
+        f"- {j['TITLU']} la {j['DENUMIRE_COMPANIE']} ({j['DOMENIU']}, {j['LOCATIE']})"
+        for j in all_jobs
+    ])
 
-        # Keep the job if any CV skill is found in the job text
-        if any(skill in job_text for skill in cv_skills):
-            filtered_jobs.append(job)
+    prompt = f"""
+    Ai mai jos conținutul unui CV și o listă de joburi din baza de date.
+    Alege cele mai potrivite 5 joburi pentru acest candidat și explică pe scurt de ce.
 
-    return {"jobs": filtered_jobs}
+    CV:
+    {text}
 
+    Lista joburi:
+    {job_data_text}
+    """
+
+    ai_response = ollama_chat(prompt)
+
+    return {"ai_job_recommendations": ai_response}

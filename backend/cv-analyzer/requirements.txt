@@ -6,3 +6,4 @@ pdfplumber
 spacy
 python-dotenv
 cx_Oracle
+ollama
