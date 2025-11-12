@@ -4,7 +4,7 @@
   "description": "",
   "main": "db.js",
   "scripts": {
-    "start": "concurrently \"cd cv-analyzer && uvicorn app:app --reload --port 8000\" \"nodemon server.js\" \"stripe listen --forward-to localhost:5000/api/stripe/webhook\"",
+    "start": "concurrently \"cd cv-analyzer && uvicorn app:app --reload --port 8000\" \"nodemon server.js\" \"stripe listen --forward-to localhost:5000/api/stripe/webhook --no-autoload-key\"",
     "dev": "node server.js"
   },
   "keywords": [],
@@ -25,6 +25,7 @@
     "stripe": "^18.4.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.10"
   }
 }

@@ -25,4 +25,4 @@ yarn-error.log*
 
 #others
 cv-analyzer/__pycache__/
-cv-analyzer/temp.pdf
+uploads/

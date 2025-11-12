@@ -98,7 +98,7 @@ router.post("/login", async (req, res) => {
         role: user.TIP_UTILIZATOR,
       },
       process.env.SECRET_KEY,
-      { expiresIn: "2h" }
+      { expiresIn: "1d" }
     );
 
     res.json({

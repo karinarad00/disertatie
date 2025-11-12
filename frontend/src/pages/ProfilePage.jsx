@@ -226,6 +226,21 @@ function ProfilePage() {
               {user.cv_url ? "Actualizează CV" : "Încarcă CV"}
             </button>
           </div>
+
+          {/* Preview CV */}
+          {user.cv_url && (
+            <div className="mb-4">
+              <h3 className="font-semibold mb-2 text-center">CV Actual</h3>
+              <iframe
+                src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(
+                  user.cv_url
+                )}`}
+                title="Preview CV"
+                className="w-full h-80 border rounded"
+              />
+            </div>
+          )}
+
           {/* Butoane plată */}
           <div className="flex space-x-4 mb-4 justify-center">
             {user.cv_url && (
