@@ -1,9 +1,10 @@
 fastapi
 uvicorn
-pydantic
+python-dotenv
 requests
 pdfplumber
-spacy
-python-dotenv
-cx_Oracle
-ollama
+oracledb
+pydantic
+google-generativeai
+numpy
+faiss-cpu

@@ -155,17 +155,39 @@ router.post("/analyze", async (req, res) => {
     const { cvUrl } = req.body;
     if (!cvUrl) return res.status(400).json({ error: "Lipsește cvUrl" });
 
+    console.log("[Node] Sending CV URL to Python backend:", cvUrl);
+
     const pyRes = await fetch("http://127.0.0.1:8000/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cvUrl }),
     });
 
+    if (!pyRes.ok) {
+      const text = await pyRes.text();
+      console.error(
+        "[Node] Python backend returned error:",
+        pyRes.status,
+        text,
+      );
+      return res.status(500).json({
+        error: "Python backend returned an error",
+        details: text,
+      });
+    }
+
     const data = await pyRes.json();
+    console.log("[Node] Analysis result received:", data);
+
     res.json(data);
   } catch (err) {
-    console.error("Eroare backend analiza CV:", err);
-    res.status(500).json({ error: "Eroare internă la analiza CV-ului" });
+    console.error("[Node] Error in /analyze route:", err);
+    res
+      .status(500)
+      .json({
+        error: "Eroare internă la analiza CV-ului",
+        details: err.message,
+      });
   }
 });
 
