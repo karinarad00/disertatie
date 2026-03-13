@@ -1,12 +1,12 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/authSlice";
+import { MapPin, LogIn, User, Building2, LogOut } from "lucide-react";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const { user } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
@@ -16,39 +16,55 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-blue-600 text-white p-4 shadow-md">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">
+    <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <h1
+          className="text-3xl font-bold text-blue-600 cursor-pointer"
+          onClick={() => navigate("/")}
+        >
           JobFinder
-        </Link>
-        <div className="space-x-4">
-          <Link to="/" className="hover:underline">
-            Home
-          </Link>
-          <Link to="/map" className="hover:underline">
-            Hartă
-          </Link>
+        </h1>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/map")}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <MapPin className="w-5 h-5" />
+            <span>Hartă</span>
+          </button>
+
           {user ? (
-            <>
-              <Link to="/profile" className="hover:underline">
-                Profil
-              </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/profile")}
+                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                title="User Profile"
+              >
+                <User className="w-5 h-5" />
+              </button>
+
               <button
                 onClick={handleLogout}
-                className="hover:underline bg-transparent border-none cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Logout
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
               </button>
-            </>
+            </div>
           ) : (
-            <Link to="/login" className="hover:underline">
-              Login
-            </Link>
+            <button
+              onClick={() => navigate("/login")}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <LogIn className="w-5 h-5" />
+              <span>Login</span>
+            </button>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   );
-}
+};
 
 export default Navbar;

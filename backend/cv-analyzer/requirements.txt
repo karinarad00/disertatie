@@ -1,10 +1,14 @@
 fastapi
 uvicorn
 python-dotenv
+pydantic
 requests
 pdfplumber
 oracledb
-pydantic
-google-generativeai
+groq
 numpy
 faiss-cpu
+torch
+sentence-transformers
+transformers
+scipy
