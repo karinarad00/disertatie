@@ -2,7 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://karinarad00.github.io/disertatie/",
+  "homepage": "https://karinarad00.github.io/disertatie",
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",
     "axios": "^1.13.5",
