@@ -1,6 +1,6 @@
 import { loginStart, loginSuccess, loginFailure } from "./authSlice";
 
-export const loginUser = (username, password) => async (dispatch) => {
+export const loginUser = (email, password) => async (dispatch) => {
   dispatch(loginStart());
 
   try {
@@ -9,7 +9,7 @@ export const loginUser = (username, password) => async (dispatch) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }), 
     });
 
     if (!response.ok) {

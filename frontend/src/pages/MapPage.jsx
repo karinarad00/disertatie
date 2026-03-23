@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MapPin, Briefcase } from "lucide-react";
 
 const customIcon = new L.Icon({
   iconUrl:
@@ -19,7 +20,6 @@ const currentLocationIcon = new L.Icon({
 
 const CurrentLocationMarker = ({ position }) => {
   if (!position) return null;
-
   return (
     <Marker position={position} icon={currentLocationIcon}>
       <Popup>Locația ta curentă</Popup>
@@ -27,13 +27,14 @@ const CurrentLocationMarker = ({ position }) => {
   );
 };
 
-const MapPage = () => {
+export default function MapPage() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState("");
   const [radius, setRadius] = useState("");
   const [currentPosition, setCurrentPosition] = useState(null);
 
+  // Fetch locations
   useEffect(() => {
     fetch("http://localhost:5000/api/companii/locations")
       .then((res) => res.json())
@@ -42,7 +43,7 @@ const MapPage = () => {
           data.map(async (loc) => {
             const coords = await geocodeAddress(loc.ADDRESS);
             return { ...loc, ...coords };
-          })
+          }),
         );
         setLocations(dataWithCoords);
         setLoading(false);
@@ -53,6 +54,7 @@ const MapPage = () => {
       });
   }, []);
 
+  // Get current user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -62,46 +64,23 @@ const MapPage = () => {
             lng: position.coords.longitude,
           });
         },
-        (error) => {
-          console.warn("Nu s-a putut obține locația curentă:", error);
-        }
+        (error) => console.warn("Nu s-a putut obține locația curentă:", error),
       );
     }
   }, []);
 
   const geocodeAddress = async (address) => {
     if (!address || address.trim() === "") return { lat: 0, lng: 0 };
-
-    const tryGeocode = async (addr) => {
-      try {
-        const res = await fetch(
-          `http://localhost:5000/api/companii/geocode?q=${encodeURIComponent(
-            addr
-          )}`
-        );
-        const data = await res.json();
-        if (data.length > 0) {
-          return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          };
-        }
-      } catch (error) {
-        console.error("Geocoding error:", error);
-      }
-      return null;
-    };
-
-    let result = await tryGeocode(address);
-    if (result) return result;
-
-    const cleanedAddress = address.replace(
-      /^(Str\.?|Strada|Bd\.?|Bulevardul)\s*/i,
-      ""
-    );
-    result = await tryGeocode(cleanedAddress);
-    if (result) return result;
-
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/companii/geocode?q=${encodeURIComponent(address)}`,
+      );
+      const data = await res.json();
+      if (data.length > 0)
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch (err) {
+      console.error("Geocoding error:", err);
+    }
     return { lat: 0, lng: 0 };
   };
 
@@ -127,7 +106,7 @@ const MapPage = () => {
         currentPosition.lat,
         currentPosition.lng,
         loc.lat,
-        loc.lng
+        loc.lng,
       ) <= parseFloat(radius);
     return matchesCity && matchesRadius;
   });
@@ -136,67 +115,103 @@ const MapPage = () => {
     ...new Set(locations.map((l) => l.CITY).filter(Boolean)),
   ];
 
-  if (loading) return <div className="p-4">Se încarcă harta...</div>;
-
   return (
-    <div className="w-full h-screen flex flex-col">
-      <div className="p-4 bg-gray-100 flex flex-wrap gap-4 items-center">
-        <label>
-          Oraș:
-          <select
-            value={selectedCity}
-            onChange={(e) => setSelectedCity(e.target.value)}
-            className="ml-2 p-1"
-          >
-            <option value="">Toate</option>
-            {uniqueCities.map((city) => (
-              <option key={city} value={city}>
-                {city}
-              </option>
-            ))}
-          </select>
-        </label>
+    <div className="min-h-screen bg-gray-50">
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Job Map</h1>
 
-        <label>
-          Distanță maximă (km):
-          <input
-            type="number"
-            value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-            className="ml-2 p-1 w-20"
-            min={0}
-          />
-        </label>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Map */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-md h-[600px] overflow-hidden border border-gray-200">
+              {loading ? (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  Se încarcă harta...
+                </div>
+              ) : (
+                <MapContainer
+                  center={[45.9432, 24.9668]}
+                  zoom={6}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    subdomains="abcd"
+                  />
+                  {currentPosition && (
+                    <CurrentLocationMarker position={currentPosition} />
+                  )}
+                  {filteredLocations.map((loc, idx) => (
+                    <Marker
+                      key={idx}
+                      position={[loc.lat, loc.lng]}
+                      icon={customIcon}
+                    >
+                      <Popup>
+                        <strong>{loc.COMPANY}</strong>
+                        <br />
+                        {loc.ADDRESS}
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              )}
+            </div>
+          </div>
 
-      <div className="flex-1">
-        <MapContainer
-          center={[45.9432, 24.9668]}
-          zoom={6}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {currentPosition && (
-            <CurrentLocationMarker
-              position={[currentPosition.lat, currentPosition.lng]}
+          {/* Job List */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Job Locations
+            </h2>
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {filteredLocations.map((loc, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+                >
+                  <h3 className="font-semibold text-gray-900">{loc.COMPANY}</h3>
+                  <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
+                    <MapPin className="size-4" />
+                    <span>{loc.ADDRESS}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-6 p-4 bg-gray-100 flex flex-wrap gap-4 rounded-lg">
+          <label className="flex items-center gap-2">
+            Oraș:
+            <select
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="p-1 border rounded"
+            >
+              <option value="">Toate</option>
+              {uniqueCities.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            Distanță maximă (km):
+            <input
+              type="number"
+              value={radius}
+              onChange={(e) => setRadius(e.target.value)}
+              className="p-1 w-24 border rounded"
+              min={0}
             />
-          )}
-          {filteredLocations.map((loc, idx) => (
-            <Marker key={idx} position={[loc.lat, loc.lng]} icon={customIcon}>
-              <Popup>
-                <strong>{loc.COMPANY}</strong>
-                <br />
-                {loc.ADDRESS}
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
+          </label>
+        </div>
+      </main>
     </div>
   );
 }
-
-export default MapPage;

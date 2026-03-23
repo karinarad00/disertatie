@@ -2,9 +2,10 @@ const express = require("express");
 const fetch = require("node-fetch");
 const router = express.Router();
 const oracledb = require("oracledb");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 // GET lista companii
-router.get("/all", async (req, res) => {
+router.get("/all", cacheMiddleware, async (req, res) => {
   let connection;
   try {
     connection = await oracledb.getConnection();
@@ -29,7 +30,7 @@ router.get("/all", async (req, res) => {
 });
 
 // GET geocodare prin proxy
-router.get("/geocode", async (req, res) => {
+router.get("/geocode", cacheMiddleware, async (req, res) => {
   const address = req.query.q;
 
   if (!address || address.trim() === "") {
@@ -38,16 +39,32 @@ router.get("/geocode", async (req, res) => {
 
   try {
     const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-      address
+      address,
     )}&format=json&limit=1`;
 
     const response = await fetch(nominatimUrl, {
       headers: {
-        "User-Agent": "YourAppName/1.0",
+        "User-Agent": "Project/1.0 (your_email@example.com)",
+        Accept: "application/json",
       },
     });
 
+    if (!response.ok) {
+      console.error(
+        `Nominatim returned ${response.status} ${response.statusText}`,
+      );
+      return res
+        .status(502)
+        .json({ message: "Eroare la geocodare: Nominatim a refuzat cererea." });
+    }
+
     const data = await response.json();
+
+    // Return default coordinates if no result
+    if (!data || data.length === 0) {
+      return res.json([{ lat: 0, lon: 0 }]);
+    }
+
     res.json(data);
   } catch (error) {
     console.error("Eroare geocodare:", error);
@@ -56,7 +73,7 @@ router.get("/geocode", async (req, res) => {
 });
 
 // GET locații pentru hartă
-router.get("/locations", async (req, res) => {
+router.get("/locations", cacheMiddleware, async (req, res) => {
   let connection;
   try {
     connection = await oracledb.getConnection();

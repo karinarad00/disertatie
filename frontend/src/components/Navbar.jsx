@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/authSlice";
-import { MapPin, LogIn, User, Building2, LogOut } from "lucide-react";
+import { MapPin, LogIn, User, Building2, Shield, LogOut } from "lucide-react"; 
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -13,6 +13,20 @@ const Navbar = () => {
     localStorage.removeItem("user");
     dispatch(logout());
     navigate("/login");
+  };
+
+  const getUserIcon = () => {
+    if (!user) return null;
+    switch (user.role) {
+      case "Angajator":
+        return <Building2 className="w-5 h-5" />;
+      case "Candidat":
+        return <User className="w-5 h-5" />;
+      case "Administrator":
+        return <Shield className="w-5 h-5" />;
+      default:
+        return <User className="w-5 h-5" />;
+    }
   };
 
   return (
@@ -41,7 +55,7 @@ const Navbar = () => {
                 className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 title="User Profile"
               >
-                <User className="w-5 h-5" />
+                {getUserIcon()}
               </button>
 
               <button

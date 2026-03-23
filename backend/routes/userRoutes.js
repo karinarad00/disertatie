@@ -66,7 +66,7 @@ router.post("/register", async (req, res) => {
 
 // Autentificare utilizator
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body; // schimbat de la username la email
 
   let connection;
   try {
@@ -75,10 +75,11 @@ router.post("/login", async (req, res) => {
     const result = await connection.execute(
       `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url
        FROM Utilizator
-       WHERE username = :username`,
-      [username],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+       WHERE email = :email`, // schimbat de la username la email
+      [email],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     if (result.rows.length === 0) {
       return res.status(401).json({ message: "Utilizator inexistent." });
     }
@@ -98,7 +99,7 @@ router.post("/login", async (req, res) => {
         role: user.TIP_UTILIZATOR,
       },
       process.env.SECRET_KEY,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     res.json({
