@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { FileText, Sparkles, Loader2 } from "lucide-react";
 
 const AnalizaCv = () => {
   const [token, setToken] = useState("");
@@ -43,10 +44,9 @@ const AnalizaCv = () => {
 
       if (!res.ok)
         throw new Error((await res.text()) || "Eroare la analiza CV-ului");
+
       const data = await res.json();
-      setRecommendations(
-        data.recommendations || "Nu au fost găsite sugestii de îmbunătățire."
-      );
+      setRecommendations(data.recommendations || "Nu au fost găsite sugestii.");
       setStatusMsg("Analiza finalizată!");
     } catch (err) {
       console.error(err);
@@ -59,47 +59,84 @@ const AnalizaCv = () => {
 
   if (!cvUrl)
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow mt-10">
-        <h1 className="text-3xl font-bold mb-6">Analiză CV</h1>
-        <p>Nu ai încărcat încă un CV.</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md text-center">
+          <FileText className="size-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Analiză CV</h1>
+          <p className="text-gray-600">Nu ai încărcat încă un CV.</p>
+        </div>
       </div>
     );
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow mt-10 relative">
-      <h1 className="text-3xl font-bold mb-6">Analiză CV</h1>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+    <div className="min-h-screen bg-gray-50">
+      <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT: CV Preview */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Analiză CV</h1>
 
-      <div className="mb-6 relative">
-        <iframe
-          src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(
-            cvUrl
-          )}`}
-          title="CV Preview"
-          className="w-full h-96 border rounded"
-        />
-        {loading && (
-          <div className="absolute top-0 left-0 w-full h-96 bg-black bg-opacity-30 flex items-center justify-center rounded">
-            <span className="text-white text-lg font-semibold">
-              Analiza CV-ului în curs...
-            </span>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-600">
+              {error}
+            </div>
+          )}
+
+          <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+            <iframe
+              src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(
+                cvUrl,
+              )}`}
+              title="CV Preview"
+              className="w-full h-[500px]"
+            />
+
+            {loading && (
+              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center">
+                <Loader2 className="animate-spin text-white size-8 mb-2" />
+                <span className="text-white font-semibold">
+                  Analiza CV-ului în curs...
+                </span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {statusMsg && (
-        <div className="p-4 border border-gray-200 rounded bg-gray-50 mb-4">
-          <p className="text-gray-600">{statusMsg}</p>
+          {statusMsg && (
+            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded">
+              <p className="text-gray-600">{statusMsg}</p>
+            </div>
+          )}
         </div>
-      )}
-      {recommendations && (
-        <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-md text-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">
-            Recomandări de îmbunătățire:
+
+        {/* RIGHT: Recommendations */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Rezultat analiză
           </h2>
-          <p className="whitespace-pre-line">{recommendations}</p>
+
+          {!recommendations && !loading && (
+            <div className="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200">
+              <Sparkles className="size-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">
+                Așteaptă analiza sau încarcă un CV pentru sugestii.
+              </p>
+            </div>
+          )}
+
+          {recommendations && (
+            <div className="bg-white rounded-lg shadow-md p-6 border border-green-200">
+              <div className="flex items-center gap-2 mb-3 text-green-600">
+                <Sparkles className="size-5" />
+                <h3 className="text-lg font-semibold">
+                  Recomandări de îmbunătățire
+                </h3>
+              </div>
+              <p className="text-gray-700 whitespace-pre-line">
+                {recommendations}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </main>
     </div>
   );
 };

@@ -16,8 +16,6 @@ const HomePage = () => {
   const [cityInput, setCityInput] = useState("");
 
   // filters applied
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCity, setFilterCity] = useState("");
   const [filterCompany, setFilterCompany] = useState("");
   const [filterExperience, setFilterExperience] = useState("");
   const [filterDomain, setFilterDomain] = useState("");
@@ -46,35 +44,28 @@ const HomePage = () => {
     fetch("http://localhost:5000/api/jobs/all")
       .then((res) => res.json())
       .then((data) => {
-        setAllJobs(data);
-        setFilteredJobs(data);
+        const jobsArray = Array.isArray(data) ? data : [];
+        setAllJobs(jobsArray);
+        setFilteredJobs(jobsArray);
         setLoadingAllJobs(false);
       })
       .catch(() => setLoadingAllJobs(false));
   }, []);
 
+  // FILTERING LOGIC moved to handleSearch
   const handleSearch = () => {
-    setSearchTerm(searchInput);
-    setFilterCity(cityInput.toLowerCase());
-
     const now = new Date();
 
     const filtered = allJobs.filter((job) => {
-      const jobDate = new Date(job.DATA_POSTARE);
-
+      const jobDate = new Date(job.DATA_POSTARII);
       let periodOk = true;
 
-      if (filterPeriod === "24h") {
+      if (filterPeriod === "24h")
         periodOk = now - jobDate <= 24 * 60 * 60 * 1000;
-      }
-
-      if (filterPeriod === "3d") {
+      if (filterPeriod === "3d")
         periodOk = now - jobDate <= 3 * 24 * 60 * 60 * 1000;
-      }
-
-      if (filterPeriod === "7d") {
+      if (filterPeriod === "7d")
         periodOk = now - jobDate <= 7 * 24 * 60 * 60 * 1000;
-      }
 
       return (
         job.TITLU.toLowerCase().includes(searchInput.toLowerCase()) &&
@@ -94,7 +85,9 @@ const HomePage = () => {
 
   const indexOfLastJob = currentPage * jobsPerPage;
   const indexOfFirstJob = indexOfLastJob - jobsPerPage;
-  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+  const currentJobs = Array.isArray(filteredJobs)
+    ? filteredJobs.slice(indexOfFirstJob, indexOfLastJob)
+    : [];
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
 
   const companyOptions = uniqueValues(allJobs, "DENUMIRE_COMPANIE");

@@ -26,22 +26,34 @@ router.get("/all", async (req, res) => {
   try {
     const jobs = await executeQuery(`
       SELECT 
-        j.id_job,
-        j.titlu,
-        j.data_postarii,
-        j.tip_job,
-        j.nivel_experienta,
-        c.id_companie,
-        c.denumire_companie,
-        c.logo,
-        o.denumire_oras AS locatie,
-        d.denumire_domeniu AS domeniu
+        j.id_job AS ID_JOB,
+        j.titlu AS TITLU,
+        j.data_postarii AS DATA_POSTARII,
+        j.tip_job AS TIP_JOB,
+        j.nivel_experienta AS NIVEL_EXPERIENTA,
+        c.id_companie AS ID_COMPANIE,
+        c.denumire_companie AS DENUMIRE_COMPANIE,
+        c.logo AS LOGO,
+        LISTAGG(o.denumire_oras, ', ') WITHIN GROUP (ORDER BY o.denumire_oras) AS LOCATIE,
+        d.denumire_domeniu AS DOMENIU
       FROM job j
       LEFT JOIN companie c ON j.id_companie = c.id_companie
       LEFT JOIN centrucompanie cc ON cc.id_companie = c.id_companie
       LEFT JOIN oras o ON cc.id_oras = o.id_oras
       LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
+      GROUP BY 
+        j.id_job, 
+        j.titlu, 
+        j.data_postarii, 
+        j.tip_job, 
+        j.nivel_experienta,
+        c.id_companie,
+        c.denumire_companie,
+        c.logo,
+        d.denumire_domeniu
+      ORDER BY j.data_postarii DESC
     `);
+
     res.json(jobs);
   } catch (err) {
     console.error("Eroare în /api/jobs/all:", err);

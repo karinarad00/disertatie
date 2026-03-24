@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -11,6 +10,8 @@ import CerereAngajator from "./pages/CerereAngajatorPage";
 import ApproveRequest from "./pages/ApproveRequest";
 import RejectRequest from "./pages/RejectRequest";
 import ProfilePage from "./pages/ProfilePage";
+import AdminPage from "./pages/AdminPage";
+import CompanyPage from "./pages/CompanyPage";
 import JobDetailsPage from "./pages/JobDetailsPage";
 import MapPage from "./pages/MapPage";
 import SuccessPage from "./pages/SuccessPage";
@@ -23,35 +24,32 @@ function App() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
-  
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar user={user} />
-      <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage setUser={setUser} />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/reset-password" element={<RequestReset />} />
-          <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/cerere-angajator" element={<CerereAngajator />} />
-          <Route path="/:id/aproba" element={<ApproveRequest />} />
-          <Route path="/:id/respinge" element={<RejectRequest />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/job/:id" element={<JobDetailsPage />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/success" element={<SuccessPage />} />
-          <Route path="/cancel" element={<CancelPage />} />
-          <Route path="/analiza" element={<AnalizaCv />} />
-          <Route path="/sugestii" element={<Sugestii />} />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
+    <Routes>
+      {/* Layout wraps all routes */}
+      <Route element={<Layout user={user} />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage setUser={setUser} />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<RequestReset />} />
+        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/cerere-angajator" element={<CerereAngajator />} />
+        <Route path="/:id/aproba" element={<ApproveRequest />} />
+        <Route path="/:id/respinge" element={<RejectRequest />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/stats" element={<AdminPage />} />
+        <Route path="/company" element={<CompanyPage />} />
+        <Route path="/job/:id" element={<JobDetailsPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/success" element={<SuccessPage />} />
+        <Route path="/cancel" element={<CancelPage />} />
+        <Route path="/analiza" element={<AnalizaCv />} />
+        <Route path="/sugestii" element={<Sugestii />} />
+      </Route>
+    </Routes>
   );
 }
 
