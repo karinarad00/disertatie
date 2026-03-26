@@ -11,6 +11,7 @@ const {
   sendEmployerRequestEmail,
   sendAdminNotificationEmail,
   sendEmployerDecisionEmail,
+  sendSetPasswordEmail,
 } = require("../mailer");
 const { use } = require("react");
 
@@ -26,7 +27,7 @@ router.post("/register", async (req, res) => {
     const existing = await connection.execute(
       `SELECT COUNT(*) AS COUNT FROM Utilizator WHERE username = :username OR email = :email`,
       { username, email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (existing.rows[0].COUNT > 0) {
@@ -46,7 +47,7 @@ router.post("/register", async (req, res) => {
           seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat'
         )`,
       { username, email, password: hashedPassword },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     res.status(201).json({ message: "Utilizator înregistrat cu succes." });
@@ -136,7 +137,7 @@ router.post("/request-reset", async (req, res) => {
     const userResult = await connection.execute(
       `SELECT id_utilizator FROM Utilizator WHERE email = :email`,
       [email],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (userResult.rows.length === 0) {
@@ -151,13 +152,14 @@ router.post("/request-reset", async (req, res) => {
 
     // Salvează token în DB
     await connection.execute(
-      `INSERT INTO reset_tokens (id_utilizator, token, expires_at) VALUES (:id_utilizator, :token, TO_TIMESTAMP(:expires_at, 'YYYY-MM-DD HH24:MI:SS'))`,
+      `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
+   VALUES (:id_utilizator, :token, :expires_at)`,
       {
         id_utilizator: userId,
-        token: token,
-        expires_at: expiresAt.toISOString().slice(0, 19).replace("T", " "),
+        token,
+        expires_at: expiresAt,
       },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     // Creează link resetare (frontend rulează pe port 3000)
@@ -190,7 +192,7 @@ router.post("/reset-password", async (req, res) => {
     const tokenResult = await connection.execute(
       `SELECT id_utilizator, expires_at FROM reset_tokens WHERE token = :token`,
       [token],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (tokenResult.rows.length === 0) {
@@ -199,7 +201,10 @@ router.post("/reset-password", async (req, res) => {
 
     const { ID_UTILIZATOR, EXPIRES_AT } = tokenResult.rows[0];
 
-    if (new Date() > EXPIRES_AT) {
+    const now = new Date();
+    console.log("Data curentă:", now.getTime());
+    console.log("Data expirării tokenului:", EXPIRES_AT.getTime());
+    if (now.getTime() > EXPIRES_AT.getTime()) {
       return res.status(400).json({ message: "Token expirat." });
     }
 
@@ -210,14 +215,14 @@ router.post("/reset-password", async (req, res) => {
     await connection.execute(
       `UPDATE Utilizator SET parola = :parola WHERE id_utilizator = :id_utilizator`,
       { parola: hashedPassword, id_utilizator: ID_UTILIZATOR },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     // Șterge tokenul după folosire
     await connection.execute(
       `DELETE FROM reset_tokens WHERE token = :token`,
       [token],
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     res.json({ message: "Parolă schimbată cu succes." });
@@ -251,7 +256,7 @@ router.post("/cereri-angajatori", async (req, res) => {
     const existingRequest = await connection.execute(
       `SELECT COUNT(*) AS count FROM CereriAngajatori WHERE id_companie = :id_companie AND email = :email`,
       { id_companie, email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (existingRequest.rows[0].COUNT > 0) {
@@ -264,7 +269,7 @@ router.post("/cereri-angajatori", async (req, res) => {
     const seqResult = await connection.execute(
       `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`,
       [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     const nextId = seqResult.rows[0].NEXTID;
 
@@ -280,7 +285,7 @@ router.post("/cereri-angajatori", async (req, res) => {
         telefon,
         descriere,
       },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     // Trimite emailul de confirmare
@@ -324,32 +329,70 @@ router.post("/cereri-angajatori", async (req, res) => {
 router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
   const id_cerere = req.params.id;
   let connection;
-
+  console.log("ID cerere pentru aprobare (backend):", id_cerere);
   try {
     connection = await oracledb.getConnection();
 
-    // Verifică dacă cererea există
     const result = await connection.execute(
       `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
       [id_cerere],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Cererea nu a fost găsită." });
     }
 
-    // Actualizează statusul în "Aprobat"
+    const cerere = result.rows[0];
+
+    // Creează un username pe baza email-ului (ex: contact@companie.com -> contact)
+    const username = cerere.EMAIL.split("@")[0];
+
+    // 1. Creezi user FĂRĂ PAROLĂ dar cu username
+    const insertUser = await connection.execute(
+      `INSERT INTO Utilizator (id_utilizator, username, email, tip_utilizator, id_companie)
+   VALUES (seq_utilizator.NEXTVAL, :username, :email, 'Angajator', :id_companie)
+   RETURNING id_utilizator INTO :id_utilizator`,
+      {
+        username,
+        email: cerere.EMAIL,
+        id_companie: cerere.ID_COMPANIE, // asigură-te că vine din cerere
+        id_utilizator: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+      },
+    );
+
+    const userId = insertUser.outBinds.id_utilizator[0];
+
+    // 2. Generezi token
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+    // 3. Salvezi token
+    await connection.execute(
+      `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
+   VALUES (:id_utilizator, :token, :expires_at)`,
+      {
+        id_utilizator: userId,
+        token,
+        expires_at: expiresAt,
+      },
+      { autoCommit: true },
+    );
+
+    // 4. Update cerere
     await connection.execute(
       `UPDATE CereriAngajatori SET status = 'Approved' WHERE id_cerere = :id`,
       [id_cerere],
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
-    // Trimite emailul de decizie către angajator
-    await sendEmployerDecisionEmail(result.rows[0].EMAIL, "approved");
+    // 5. Link setare parolă
+    const link = `http://localhost:3000/change-password?token=${token}`;
 
-    res.json({ message: "Cererea a fost aprobată." });
+    // 6. Trimite email
+    await sendSetPasswordEmail(cerere.EMAIL, link);
+
+    res.json({ message: "Cererea a fost aprobată și email trimis." });
   } catch (err) {
     console.error("Eroare la aprobarea cererii:", err);
     res.status(500).json({ message: "Eroare server." });
@@ -357,9 +400,7 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
     if (connection) {
       try {
         await connection.close();
-      } catch (e) {
-        console.error(e);
-      }
+      } catch {}
     }
   }
 });
@@ -374,7 +415,7 @@ router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
     const result = await connection.execute(
       `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
       [id_cerere],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (result.rows.length === 0) {
@@ -384,14 +425,14 @@ router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
     await connection.execute(
       `UPDATE CereriAngajatori SET status = 'Rejected' WHERE id_cerere = :id`,
       [id_cerere],
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     // Trimite emailul de decizie către angajator
     await sendEmployerDecisionEmail(
       result.rows[0].EMAIL,
       "rejected",
-      req.body.motiv || "Cererea a fost respinsă fără un motiv specificat."
+      req.body.motiv || "Cererea a fost respinsă fără un motiv specificat.",
     );
 
     res.json({ message: "Cererea a fost respinsă." });
@@ -415,7 +456,7 @@ router.get("/profil", authenticateToken, async (req, res) => {
        FROM Utilizator
        WHERE id_utilizator = :id_utilizator`,
       [userId],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
     if (result.rows.length === 0) {

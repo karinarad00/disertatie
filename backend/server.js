@@ -13,15 +13,15 @@ const stripePaymentRoute = require("./routes/stripePayment");
 const app = express();
 const port = 5000;
 
-// Middleware
-app.use(cacheMiddleware);
-
 app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
   })
 );
+
+// Middleware
+app.use(cacheMiddleware);
 
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/stripe/webhook") {

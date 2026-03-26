@@ -61,8 +61,8 @@ async function sendAdminNotificationEmail(adminEmail, cerereInfo) {
   const { id_cerere, id_companie, email, nume_contact, telefon, descriere } =
     cerereInfo;
 
-  const approvalLink = `http://localhost:3000/${id_cerere}/aproba`;
-  const rejectionLink = `http://localhost:3000/${id_cerere}/respinge`;
+  const approvalLink = `http://localhost:3000/cerere/${id_cerere}/aproba`;
+  const rejectionLink = `http://localhost:3000/cerere/${id_cerere}/respinge`;
 
   const mailOptions = {
     from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
@@ -119,10 +119,35 @@ async function sendEmployerDecisionEmail(toEmail, status, motiv) {
   await transporter.sendMail(mailOptions);
 }
 
+// Email: Setare parolă pentru cont nou (angajator)
+async function sendSetPasswordEmail(toEmail, setPasswordLink) {
+  const mailOptions = {
+    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    to: toEmail,
+    subject: "Cont angajator aprobat - setează parola",
+    text: `Contul tău a fost aprobat. Setează parola folosind acest link: ${setPasswordLink}`,
+    html: `
+      <p>Bună,</p>
+      <p>Contul tău de angajator a fost <strong>aprobat</strong>.</p>
+      <p>Pentru a-ți activa contul, setează parola accesând linkul de mai jos:</p>
+
+      <a href="${setPasswordLink}" 
+         style="padding:10px 15px; background:#007bff; color:white; text-decoration:none; border-radius:5px;">
+         Setează parola
+      </a>
+
+      <p>Linkul este valabil pentru o perioadă limitată.</p>
+      <p>Dacă nu ai făcut tu această cerere, ignoră acest email.</p>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
 
 module.exports = {
   sendResetEmail,
   sendEmployerRequestEmail,
   sendAdminNotificationEmail,
   sendEmployerDecisionEmail,
+  sendSetPasswordEmail,
 };

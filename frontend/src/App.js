@@ -31,14 +31,13 @@ function App() {
     <Routes>
       {/* Layout wraps all routes */}
       <Route element={<Layout user={user} />}>
-        <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage setUser={setUser} />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<RequestReset />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/cerere-angajator" element={<CerereAngajator />} />
-        <Route path="/:id/aproba" element={<ApproveRequest />} />
-        <Route path="/:id/respinge" element={<RejectRequest />} />
+        <Route path="/cerere/:id/aproba" element={<ApproveRequest />} />
+        <Route path="/cerere/:id/respinge" element={<RejectRequest />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/stats" element={<AdminPage />} />
         <Route path="/company" element={<CompanyPage />} />
@@ -48,6 +47,7 @@ function App() {
         <Route path="/cancel" element={<CancelPage />} />
         <Route path="/analiza" element={<AnalizaCv />} />
         <Route path="/sugestii" element={<Sugestii />} />
+        <Route path="/" element={<HomePage />} />
       </Route>
     </Routes>
   );
