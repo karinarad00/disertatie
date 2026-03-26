@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { executeQuery } = require("../db");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 // Ruta pentru joburile de la companiile cu subscriptie activa
 router.get("/paid", async (req, res) => {
@@ -100,6 +101,32 @@ router.get("/:id", async (req, res) => {
   } catch (err) {
     console.error(`Eroare în /api/jobs/${id}:`, err);
     res.status(500).json({ error: "Eroare la preluarea jobului" });
+  }
+});
+
+// GET joburi active pentru companie cu numărul de aplicanți
+router.get("/by-company/:id", cacheMiddleware, async (req, res) => {
+  const id = Number(req.params.id);
+  
+  try {
+    const jobs = await executeQuery(
+      `SELECT 
+         j.id_job AS "id",
+         j.titlu AS "title",
+         COUNT(aj.id_aplicare) AS "applicants",
+         TO_CHAR(j.data_postarii, 'DD Mon YYYY') AS "posted"
+       FROM Job j
+       LEFT JOIN Aplicare_Job aj ON j.id_job = aj.id_job
+       WHERE j.id_companie = :id
+       GROUP BY j.id_job, j.titlu, j.data_postarii
+       ORDER BY j.data_postarii DESC`,
+      { id: Number(id) },
+    );
+
+    res.json(jobs);
+  } catch (err) {
+    console.error("Eroare la preluarea joburilor:", err);
+    res.status(500).json({ message: "Eroare server." });
   }
 });
 

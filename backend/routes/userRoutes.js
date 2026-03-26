@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const oracledb = require("oracledb");
+const { executeQuery } = require("../db");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const authenticateToken = require("../middleware/authMiddleware");
 require("dotenv").config();
+
 const {
   sendResetEmail,
   sendEmployerRequestEmail,
@@ -13,86 +14,67 @@ const {
   sendEmployerDecisionEmail,
   sendSetPasswordEmail,
 } = require("../mailer");
-const { use } = require("react");
 
-// Înregistrare utilizator
+// ================= REGISTER =================
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
 
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-
-    // Verifică dacă username-ul sau email-ul există deja
-    const existing = await connection.execute(
-      `SELECT COUNT(*) AS COUNT FROM Utilizator WHERE username = :username OR email = :email`,
+    const existing = await executeQuery(
+      `SELECT COUNT(*) AS COUNT 
+       FROM Utilizator 
+       WHERE username = :username OR email = :email`,
       { username, email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
-    if (existing.rows[0].COUNT > 0) {
-      return res
-        .status(400)
-        .json({ message: "Username-ul sau email-ul este deja folosit." });
+    if (existing[0].COUNT > 0) {
+      return res.status(400).json({
+        message: "Username-ul sau email-ul este deja folosit.",
+      });
     }
 
-    // Criptează parola
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Inserează utilizatorul cu tipul Candidat
-    await connection.execute(
+    await executeQuery(
       `INSERT INTO Utilizator (
-          id_utilizator, username, email, parola, tip_utilizator
-        ) VALUES (
-          seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat'
-        )`,
+        id_utilizator, username, email, parola, tip_utilizator
+      ) VALUES (
+        seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat'
+      )`,
       { username, email, password: hashedPassword },
-      { autoCommit: true },
     );
 
     res.status(201).json({ message: "Utilizator înregistrat cu succes." });
   } catch (error) {
     console.error("Eroare la înregistrare:", error);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Eroare la închiderea conexiunii:", err);
-      }
-    }
   }
 });
 
-// Autentificare utilizator
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body; // schimbat de la username la email
+  const { email, password } = req.body;
 
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-
-    const result = await connection.execute(
-      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url
+    const result = await executeQuery(
+      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url, id_companie
        FROM Utilizator
-       WHERE email = :email`, // schimbat de la username la email
-      [email],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+       WHERE email = :email`,
+      { email },
     );
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(401).json({ message: "Utilizator inexistent." });
     }
 
-    const user = result.rows[0];
+    const user = result[0];
+
     const parolaOk = await bcrypt.compare(password, user.PAROLA);
 
     if (!parolaOk) {
       return res.status(401).json({ message: "Parolă incorectă." });
     }
 
-    // Creează token JWT
     const token = jwt.sign(
       {
         id: user.ID_UTILIZATOR,
@@ -104,366 +86,118 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({
-      token: token,
+      token,
       id: user.ID_UTILIZATOR,
       username: user.USERNAME,
       email: user.EMAIL,
       role: user.TIP_UTILIZATOR,
       imagine_profil: user.IMAGINE_PROFIL,
       cv_url: user.CV_URL,
+      id_companie: user.ID_COMPANIE,
     });
   } catch (error) {
     console.error("Eroare login:", error);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Eroare la închiderea conexiunii:", err);
-      }
-    }
   }
 });
 
+// ================= RESET REQUEST =================
 router.post("/request-reset", async (req, res) => {
   const { email } = req.body;
 
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-
-    // Verifică dacă emailul există
-    const userResult = await connection.execute(
+    const userResult = await executeQuery(
       `SELECT id_utilizator FROM Utilizator WHERE email = :email`,
-      [email],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      { email },
     );
 
-    if (userResult.rows.length === 0) {
+    if (userResult.length === 0) {
       return res.status(404).json({ message: "Email inexistent." });
     }
 
-    const userId = userResult.rows[0].ID_UTILIZATOR;
+    const userId = userResult[0].ID_UTILIZATOR;
 
-    // Generează token random + expirare (ex: 1h)
     const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 oră
+    const expiresAt = new Date(Date.now() + 3600000);
 
-    // Salvează token în DB
-    await connection.execute(
+    await executeQuery(
       `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
-   VALUES (:id_utilizator, :token, :expires_at)`,
-      {
-        id_utilizator: userId,
-        token,
-        expires_at: expiresAt,
-      },
-      { autoCommit: true },
+       VALUES (:id_utilizator, :token, :expires_at)`,
+      { id_utilizator: userId, token, expires_at: expiresAt },
     );
 
-    // Creează link resetare (frontend rulează pe port 3000)
     const resetLink = `http://localhost:3000/change-password?token=${token}`;
 
-    // Trimite email
     await sendResetEmail(email, resetLink);
 
-    res.json({ message: "Instrucțiuni de resetare trimise pe email." });
+    res.json({ message: "Instrucțiuni trimise pe email." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch {}
-    }
   }
 });
 
+// ================= RESET PASSWORD =================
 router.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
 
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-
-    // Caută token valid (neexpirat)
-    const tokenResult = await connection.execute(
-      `SELECT id_utilizator, expires_at FROM reset_tokens WHERE token = :token`,
-      [token],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    const tokenResult = await executeQuery(
+      `SELECT id_utilizator, expires_at 
+       FROM reset_tokens 
+       WHERE token = :token`,
+      { token },
     );
 
-    if (tokenResult.rows.length === 0) {
+    if (tokenResult.length === 0) {
       return res.status(400).json({ message: "Token invalid." });
     }
 
-    const { ID_UTILIZATOR, EXPIRES_AT } = tokenResult.rows[0];
+    const { ID_UTILIZATOR, EXPIRES_AT } = tokenResult[0];
 
-    const now = new Date();
-    console.log("Data curentă:", now.getTime());
-    console.log("Data expirării tokenului:", EXPIRES_AT.getTime());
-    if (now.getTime() > EXPIRES_AT.getTime()) {
+    if (new Date() > EXPIRES_AT) {
       return res.status(400).json({ message: "Token expirat." });
     }
 
-    // Hash noua parolă
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Actualizează parola în Utilizator
-    await connection.execute(
-      `UPDATE Utilizator SET parola = :parola WHERE id_utilizator = :id_utilizator`,
-      { parola: hashedPassword, id_utilizator: ID_UTILIZATOR },
-      { autoCommit: true },
+    await executeQuery(
+      `UPDATE Utilizator 
+       SET parola = :parola 
+       WHERE id_utilizator = :id`,
+      { parola: hashedPassword, id: ID_UTILIZATOR },
     );
 
-    // Șterge tokenul după folosire
-    await connection.execute(
-      `DELETE FROM reset_tokens WHERE token = :token`,
-      [token],
-      { autoCommit: true },
-    );
+    await executeQuery(`DELETE FROM reset_tokens WHERE token = :token`, {
+      token,
+    });
 
-    res.json({ message: "Parolă schimbată cu succes." });
+    res.json({ message: "Parolă schimbată." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch {}
-    }
   }
 });
 
-// POST cerere angajator
-router.post("/cereri-angajatori", async (req, res) => {
-  const { id_companie, email, nume_contact, telefon, descriere } = req.body;
-
-  if (!id_companie || !email) {
-    return res
-      .status(400)
-      .json({ message: "Compania și email-ul sunt obligatorii." });
-  }
-
-  let connection;
-  try {
-    connection = await oracledb.getConnection();
-
-    // Verifică dacă deja există o cerere cu același id_companie și email
-    const existingRequest = await connection.execute(
-      `SELECT COUNT(*) AS count FROM CereriAngajatori WHERE id_companie = :id_companie AND email = :email`,
-      { id_companie, email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    if (existingRequest.rows[0].COUNT > 0) {
-      return res.status(409).json({
-        message: "Există deja o cerere pentru această companie și email.",
-      });
-    }
-
-    // Continuă cu inserarea dacă nu există deja
-    const seqResult = await connection.execute(
-      `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`,
-      [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-    const nextId = seqResult.rows[0].NEXTID;
-
-    await connection.execute(
-      `INSERT INTO CereriAngajatori
-         (id_cerere, id_companie, email, nume_contact, telefon, descriere, status, data_cerere)
-         VALUES (:id_cerere, :id_companie, :email, :nume_contact, :telefon, :descriere, 'Pending', SYSDATE)`,
-      {
-        id_cerere: nextId,
-        id_companie,
-        email,
-        nume_contact,
-        telefon,
-        descriere,
-      },
-      { autoCommit: true },
-    );
-
-    // Trimite emailul de confirmare
-    try {
-      await sendEmployerRequestEmail(email, nume_contact);
-    } catch (emailErr) {
-      console.error("Eroare la trimiterea emailului:", emailErr);
-    }
-
-    // Notifică adminul (presupunem că emailul adminului este stocat în .env)
-    const adminEmail = process.env.ADMIN_EMAIL;
-    try {
-      await sendAdminNotificationEmail(adminEmail, {
-        id_cerere: nextId,
-        id_companie,
-        email,
-        nume_contact,
-        telefon,
-        descriere,
-      });
-    } catch (emailErr) {
-      console.error("Eroare la trimiterea notificării către admin:", emailErr);
-    }
-
-    res.status(201).json({ message: "Cererea a fost înregistrată." });
-  } catch (err) {
-    console.error("Eroare la inserarea cererii:", err);
-    res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }
-});
-
-// Aprobare cerere angajator
-router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
-  const id_cerere = req.params.id;
-  let connection;
-  console.log("ID cerere pentru aprobare (backend):", id_cerere);
-  try {
-    connection = await oracledb.getConnection();
-
-    const result = await connection.execute(
-      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
-      [id_cerere],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Cererea nu a fost găsită." });
-    }
-
-    const cerere = result.rows[0];
-
-    // Creează un username pe baza email-ului (ex: contact@companie.com -> contact)
-    const username = cerere.EMAIL.split("@")[0];
-
-    // 1. Creezi user FĂRĂ PAROLĂ dar cu username
-    const insertUser = await connection.execute(
-      `INSERT INTO Utilizator (id_utilizator, username, email, tip_utilizator, id_companie)
-   VALUES (seq_utilizator.NEXTVAL, :username, :email, 'Angajator', :id_companie)
-   RETURNING id_utilizator INTO :id_utilizator`,
-      {
-        username,
-        email: cerere.EMAIL,
-        id_companie: cerere.ID_COMPANIE, // asigură-te că vine din cerere
-        id_utilizator: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-      },
-    );
-
-    const userId = insertUser.outBinds.id_utilizator[0];
-
-    // 2. Generezi token
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
-
-    // 3. Salvezi token
-    await connection.execute(
-      `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
-   VALUES (:id_utilizator, :token, :expires_at)`,
-      {
-        id_utilizator: userId,
-        token,
-        expires_at: expiresAt,
-      },
-      { autoCommit: true },
-    );
-
-    // 4. Update cerere
-    await connection.execute(
-      `UPDATE CereriAngajatori SET status = 'Approved' WHERE id_cerere = :id`,
-      [id_cerere],
-      { autoCommit: true },
-    );
-
-    // 5. Link setare parolă
-    const link = `http://localhost:3000/change-password?token=${token}`;
-
-    // 6. Trimite email
-    await sendSetPasswordEmail(cerere.EMAIL, link);
-
-    res.json({ message: "Cererea a fost aprobată și email trimis." });
-  } catch (err) {
-    console.error("Eroare la aprobarea cererii:", err);
-    res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch {}
-    }
-  }
-});
-
-router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
-  const id_cerere = req.params.id;
-  let connection;
-
-  try {
-    connection = await oracledb.getConnection();
-
-    const result = await connection.execute(
-      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
-      [id_cerere],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Cererea nu a fost găsită." });
-    }
-
-    await connection.execute(
-      `UPDATE CereriAngajatori SET status = 'Rejected' WHERE id_cerere = :id`,
-      [id_cerere],
-      { autoCommit: true },
-    );
-
-    // Trimite emailul de decizie către angajator
-    await sendEmployerDecisionEmail(
-      result.rows[0].EMAIL,
-      "rejected",
-      req.body.motiv || "Cererea a fost respinsă fără un motiv specificat.",
-    );
-
-    res.json({ message: "Cererea a fost respinsă." });
-  } catch (err) {
-    console.error("Eroare respingere:", err);
-    res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) await connection.close().catch(console.error);
-  }
-});
-
+// ================= PROFIL =================
 router.get("/profil", authenticateToken, async (req, res) => {
   const userId = req.user.id;
 
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-
-    const result = await connection.execute(
-      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil, cv_url, subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori
+    const result = await executeQuery(
+      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil, cv_url,
+              subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori
        FROM Utilizator
-       WHERE id_utilizator = :id_utilizator`,
-      [userId],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+       WHERE id_utilizator = :id`,
+      { id: userId },
     );
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ message: "Utilizatorul nu a fost găsit." });
     }
 
-    const user = result.rows[0];
+    const user = result[0];
+
     res.json({
       id: user.ID_UTILIZATOR,
       username: user.USERNAME,
@@ -476,16 +210,8 @@ router.get("/profil", authenticateToken, async (req, res) => {
       subscriptie_angajatori: user.SUBSCRIPTIE_ANGAJATORI,
     });
   } catch (err) {
-    console.error("Eroare la obținerea profilului:", err);
+    console.error(err);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Eroare la închiderea conexiunii:", err);
-      }
-    }
   }
 });
 

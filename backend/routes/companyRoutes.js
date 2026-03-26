@@ -1,35 +1,26 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const router = express.Router();
-const oracledb = require("oracledb");
+const { executeQuery } = require("../db");
 const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 // GET lista companii
 router.get("/all", cacheMiddleware, async (req, res) => {
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-    const result = await connection.execute(
-      `SELECT id_companie, denumire_companie FROM Companie ORDER BY denumire_companie`,
-      [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    res.json(result.rows);
+    const result = await executeQuery(`
+      SELECT id_companie, denumire_companie 
+      FROM Companie 
+      ORDER BY denumire_companie
+    `);
+
+    res.json(result);
   } catch (err) {
     console.error("Eroare la preluarea companiilor:", err);
     res.status(500).json({ message: "Eroare server." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (e) {
-        console.error(e);
-      }
-    }
   }
 });
 
-// GET geocodare prin proxy
+// GET geocodare prin proxy (rămâne la fel)
 router.get("/geocode", cacheMiddleware, async (req, res) => {
   const address = req.query.q;
 
@@ -50,22 +41,13 @@ router.get("/geocode", cacheMiddleware, async (req, res) => {
     });
 
     if (!response.ok) {
-      console.error(
-        `Nominatim returned ${response.status} ${response.statusText}`,
-      );
-      return res
-        .status(502)
-        .json({ message: "Eroare la geocodare: Nominatim a refuzat cererea." });
+      return res.status(502).json({
+        message: "Eroare la geocodare: Nominatim a refuzat cererea.",
+      });
     }
 
     const data = await response.json();
-
-    // Return default coordinates if no result
-    if (!data || data.length === 0) {
-      return res.json([{ lat: 0, lon: 0 }]);
-    }
-
-    res.json(data);
+    res.json(data.length ? data : [{ lat: 0, lon: 0 }]);
   } catch (error) {
     console.error("Eroare geocodare:", error);
     res.status(500).json({ message: "Eroare la geocodare." });
@@ -74,32 +56,81 @@ router.get("/geocode", cacheMiddleware, async (req, res) => {
 
 // GET locații pentru hartă
 router.get("/locations", cacheMiddleware, async (req, res) => {
-  let connection;
   try {
-    connection = await oracledb.getConnection();
-    const result = await connection.execute(
-      `SELECT 
-         c.denumire_companie AS company,
-         cc.adresa AS address,
-         o.denumire_oras AS city
-       FROM Companie c
-       JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
-       JOIN Oras o ON cc.id_oras = o.id_oras`,
-      [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    res.json(result.rows);
+    const result = await executeQuery(`
+      SELECT 
+        c.denumire_companie AS company,
+        cc.adresa AS address,
+        o.denumire_oras AS city
+      FROM Companie c
+      JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
+      JOIN Oras o ON cc.id_oras = o.id_oras
+    `);
+
+    res.json(result);
   } catch (err) {
     console.error("Eroare la preluarea locațiilor:", err);
     res.status(500).json({ message: "Eroare server la locații." });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (e) {
-        console.error(e);
-      }
+  }
+});
+
+// GET detalii companie după id (cu locații array)
+router.get("/:id", cacheMiddleware, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ message: "ID invalid." });
+  }
+
+  try {
+    const rows = await executeQuery(
+      `
+      SELECT 
+        c.id_companie,
+        c.denumire_companie,
+        c.descriere,
+        c.logo,
+        c.email,
+        c.telefon,
+        c.website,
+        cc.adresa,
+        o.denumire_oras AS city
+      FROM Companie c
+      LEFT JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
+      LEFT JOIN Oras o ON cc.id_oras = o.id_oras
+      WHERE c.id_companie = :id
+      `,
+      { id },
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: "Compania nu a fost găsită." });
     }
+
+    const companyInfo = {
+      id_companie: rows[0].ID_COMPANIE,
+      denumire_companie: rows[0].DENUMIRE_COMPANIE,
+      descriere: rows[0].DESCRIERE,
+      logo: rows[0].LOGO,
+      email: rows[0].EMAIL,
+      telefon: rows[0].TELEFON,
+      website: rows[0].WEBSITE,
+      locations: [],
+    };
+
+    rows.forEach((row) => {
+      if (row.ADRESA || row.CITY) {
+        companyInfo.locations.push({
+          address: row.ADRESA || "",
+          city: row.CITY || "",
+        });
+      }
+    });
+
+    res.json(companyInfo);
+  } catch (err) {
+    console.error("Eroare la preluarea companiei:", err);
+    res.status(500).json({ message: "Eroare server." });
   }
 });
 
