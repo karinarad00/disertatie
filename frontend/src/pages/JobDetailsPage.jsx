@@ -19,7 +19,6 @@ const JobDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Formatează data_postarii în "28 mai 2025"
   const formatDate = (isoString) => {
     if (!isoString) return "Data necunoscută";
     const date = new Date(isoString);
@@ -28,6 +27,20 @@ const JobDetailsPage = () => {
       month: "long",
       year: "numeric",
     });
+  };
+
+  // Construiește salariul într-un format ușor de citit
+  const formatSalary = (min, max) => {
+    if (min && max) return `${min} - ${max} RON`;
+    if (min) return `${min} RON`;
+    if (max) return `${max} RON`;
+    return "Nedefinit";
+  };
+
+  // Construiește locațiile într-un string
+  const formatLocations = (addresses) => {
+    if (!addresses || addresses.length === 0) return "Locație nedefinită";
+    return addresses.map((a) => `${a.address}, ${a.city}`).join(" | ");
   };
 
   useEffect(() => {
@@ -69,6 +82,8 @@ const JobDetailsPage = () => {
 
   if (!job) return null;
 
+  const salaryStr = formatSalary(job.SALARIU_MIN, job.SALARIU_MAX);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -103,7 +118,17 @@ const JobDetailsPage = () => {
                   <div className="flex flex-wrap gap-4 text-gray-600">
                     <div className="flex items-center gap-2">
                       <MapPin className="size-5" />
-                      {job.ADRESA || "Locație nedefinită"}
+                      <div className="flex flex-col">
+                        {job.adrese && job.adrese.length > 0 ? (
+                          job.adrese.map((loc, index) => (
+                            <span key={index}>
+                              {loc.ADDRESS}, {loc.CITY}
+                            </span>
+                          ))
+                        ) : (
+                          <span>Locație nedefinită</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -113,7 +138,7 @@ const JobDetailsPage = () => {
 
                     <div className="flex items-center gap-2">
                       <DollarSign className="size-5" />
-                      {job.SALARIU || "Salariu nedefinit"}
+                      {salaryStr}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -175,7 +200,7 @@ const JobDetailsPage = () => {
 
                 <div>
                   <p className="text-sm text-gray-600">Salariu</p>
-                  <p className="font-semibold">{job.SALARIU || "Nedefinit"}</p>
+                  <p className="font-semibold">{salaryStr}</p>
                 </div>
 
                 <div>

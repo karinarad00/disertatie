@@ -5,6 +5,7 @@ const path = require("path");
 const { initialize } = require("./db");
 const userRoutes = require("./routes/userRoutes");
 const jobsRoutes = require("./routes/jobsRoutes");
+const domeniiRoutes = require("./routes/domeniiRoutes");
 const companyRoutes = require("./routes/companyRoutes");
 const cacheMiddleware = require("./middleware/cacheMiddleware");
 const cvRoute = require("./routes/cvRoute");
@@ -35,6 +36,7 @@ initialize();
 
 app.use("/api/users", userRoutes);
 app.use("/api/jobs", jobsRoutes);
+app.use("/api/domenii", domeniiRoutes);
 app.use("/api/companii", companyRoutes);
 app.use("/api/cv", cvRoute);
 app.use("/api/stripe", stripePaymentRoute);

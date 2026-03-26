@@ -9,6 +9,8 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
+import { EditJobModal } from "../components/EditJobModal";
+import { CreateJobModal } from "../components/CreateJobModal";
 
 export default function CompanyProfile() {
   const navigate = useNavigate();
@@ -16,6 +18,8 @@ export default function CompanyProfile() {
   const [company, setCompany] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [currentJob, setCurrentJob] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const logoutAndRedirect = () => {
@@ -24,6 +28,21 @@ export default function CompanyProfile() {
     navigate("/login");
   };
 
+  const fetchJobs = async () => {
+    if (!user) return;
+    try {
+      const resJobs = await fetch(
+        `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
+      );
+      if (!resJobs.ok) throw new Error("Eroare la preluarea joburilor");
+      const jobsData = await resJobs.json();
+      setJobs(jobsData);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+ 
   useEffect(() => {
     async function fetchData() {
       const userString = localStorage.getItem("user");
@@ -40,23 +59,12 @@ export default function CompanyProfile() {
 
       try {
         setLoading(true);
-
-        // 1. Preluăm datele companiei pe baza id
         const resComp = await fetch(
           `http://localhost:5000/api/companii/${localUser.id_companie}`,
         );
         if (!resComp.ok) throw new Error("Eroare la preluarea companiei");
         const compData = await resComp.json();
         setCompany(compData);
-
-        // 2. Preluăm joburile active ale companiei
-        const resJobs = await fetch(
-          `http://localhost:5000/api/jobs/by-company/${localUser.id_companie}`,
-        );
-        if (!resJobs.ok) throw new Error("Eroare la preluarea joburilor");
-        
-        const jobsData = await resJobs.json();
-        setJobs(jobsData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -67,6 +75,26 @@ export default function CompanyProfile() {
     fetchData();
   }, [navigate]);
 
+  // 2. Effect separat pentru joburi, apelat **după ce user este setat**
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchJobs = async () => {
+      try {
+        const resJobs = await fetch(
+          `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
+        );
+        if (!resJobs.ok) throw new Error("Eroare la preluarea joburilor");
+        const jobsData = await resJobs.json();
+        setJobs(jobsData);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchJobs();
+  }, [user]); 
+
   if (loading) return <p className="p-6">Se încarcă datele companiei...</p>;
   if (!company)
     return <p className="p-6 text-red-500">Compania nu a fost găsită.</p>;
@@ -75,9 +103,7 @@ export default function CompanyProfile() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow p-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {company.denumire_companie}
-        </h1>
+        <h1 className="text-2xl font-bold">{company.denumire_companie}</h1>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -87,38 +113,37 @@ export default function CompanyProfile() {
             {company.logo && (
               <img
                 src={company.logo}
-                alt="Logo Companie"
-                className="w-32 h-32 mx-auto mb-4 object-cover rounded-lg"
+                alt="Logo"
+                className="w-32 h-32 mx-auto mb-4 rounded-lg"
               />
             )}
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold mb-2">
               {company.denumire_companie}
             </h2>
             <p className="text-gray-600 mb-4">{company.descriere}</p>
-
             <div className="space-y-2">
-              <div className="flex items-center gap-2 justify-center text-gray-700">
-                <Mail className="size-5 text-gray-400" />
-                <span>{company.email}</span>
+              <div className="flex items-center gap-2 justify-center">
+                <Mail className="size-5" />
+                {company.email}
               </div>
-              <div className="flex items-center gap-2 justify-center text-gray-700">
-                <Phone className="size-5 text-gray-400" />
-                <span>{company.telefon}</span>
+              <div className="flex items-center gap-2 justify-center">
+                <Phone className="size-5" />
+                {company.telefon}
               </div>
-              <div className="flex items-start gap-2 justify-center text-gray-700">
-                <MapPin className="size-5 text-gray-400 mt-1" />
+              <div className="flex items-start gap-2 justify-center">
+                <MapPin className="size-5 mt-1" />
                 <div className="text-sm text-left">
-                  {company.locations && company.locations.length > 0 ? (
-                    company.locations.map((loc, index) => (
-                      <div key={index}>{loc.address}</div>
+                  {company.locations?.length > 0 ? (
+                    company.locations.map((loc, i) => (
+                      <div key={i}>{loc.address}</div>
                     ))
                   ) : (
                     <span>Fără locații</span>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 justify-center text-gray-700">
-                <Globe className="size-5 text-gray-400" />
+              <div className="flex items-center gap-2 justify-center">
+                <Globe className="size-5" />
                 <a
                   href={company.website}
                   target="_blank"
@@ -136,9 +161,7 @@ export default function CompanyProfile() {
         <div className="lg:col-span-2 space-y-6">
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Quick Actions
-            </h2>
+            <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -168,19 +191,12 @@ export default function CompanyProfile() {
 
           {/* Active Jobs */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Active Job Postings
-              </h2>
-              <span className="text-sm text-gray-500">
-                {jobs.length} active
-              </span>
-            </div>
+            <h2 className="text-xl font-bold mb-4">Active Job Postings</h2>
             <div className="space-y-4">
               {jobs.map((job) => (
                 <div
                   key={job.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -196,10 +212,19 @@ export default function CompanyProfile() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
+                      <button
+                        className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                        onClick={() => {
+                          setCurrentJob(job);
+                          setEditModalOpen(true);
+                        }}
+                      >
                         Edit
                       </button>
-                      <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                      <button
+                        onClick={() => navigate(`/job/${job.id}`)}
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
                         View
                       </button>
                     </div>
@@ -211,20 +236,19 @@ export default function CompanyProfile() {
         </div>
       </main>
 
-      {/* Modal Placeholder */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Create Job (Placeholder)</h2>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      <CreateJobModal
+        isOpen={isModalOpen}
+        idCompanie={company.id_companie}
+        onClose={() => setIsModalOpen(false)}
+        onJobCreated={fetchJobs}
+      />
+      <EditJobModal
+        isOpen={editModalOpen}
+        jobId={currentJob?.id}
+        onClose={() => setEditModalOpen(false)}
+        onJobUpdated={fetchJobs}
+      />
     </div>
   );
 }

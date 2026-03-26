@@ -26,6 +26,10 @@ async function executeQuery(sql, binds = [], options = {}) {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
       ...options,
     });
+    if (result.outBinds) {
+      return result; 
+    }
+
     return result.rows;
   } catch (err) {
     console.error("Error executing query:", err);

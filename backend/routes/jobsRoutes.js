@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { executeQuery } = require("../db");
+const oracledb = require("oracledb");
+const authenticateToken = require("../middleware/authMiddleware");
 const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 // Ruta pentru joburile de la companiile cu subscriptie activa
@@ -62,11 +64,12 @@ router.get("/all", async (req, res) => {
   }
 });
 
-// Ruta pentru un singur job după ID
+// Ruta pentru un singur job după ID, cu salariu și adrese ca array
 router.get("/:id", async (req, res) => {
-  const id = req.params.id;
+  const id = Number(req.params.id);
 
   try {
+    // 1. Preluăm jobul
     const jobs = await executeQuery(
       `
       SELECT 
@@ -77,9 +80,11 @@ router.get("/:id", async (req, res) => {
         j.data_postarii,
         j.tip_job,
         j.nivel_experienta,
+        j.salariu_min,
+        j.salariu_max,
         c.id_companie,
         c.denumire_companie,
-        c.email_contact,
+        c.email,
         c.website,
         c.descriere AS descriere_companie,
         c.logo,
@@ -90,14 +95,29 @@ router.get("/:id", async (req, res) => {
       LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
       WHERE j.id_job = :id
       `,
-      { id: Number(id) }
+      { id }
     );
 
     if (jobs.length === 0) {
       return res.status(404).json({ error: "Jobul nu a fost găsit" });
     }
 
-    res.json(jobs[0]);
+    const job = jobs[0];
+
+    // 2. Preluăm adresele companiei ca array
+    const addresses = await executeQuery(
+      `
+      SELECT cc.adresa AS address, o.denumire_oras AS city
+      FROM CentruCompanie cc
+      JOIN Oras o ON cc.id_oras = o.id_oras
+      WHERE cc.id_companie = :companyId
+      `,
+      { companyId: job.ID_COMPANIE || job.id_companie }
+    );
+
+    job.adrese = addresses; // array de { address, city }
+
+    res.json(job);
   } catch (err) {
     console.error(`Eroare în /api/jobs/${id}:`, err);
     res.status(500).json({ error: "Eroare la preluarea jobului" });
@@ -127,6 +147,171 @@ router.get("/by-company/:id", cacheMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Eroare la preluarea joburilor:", err);
     res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// Create Job
+router.post("/create", authenticateToken, async (req, res) => {
+  const {
+    titlu,
+    tipJob,
+    nivelExperienta,
+    salariuMin,
+    salariuMax,
+    descriere,
+    linkCariera,
+    idDomeniu,
+    idCompanie,
+  } = req.body;
+
+  if (!titlu || !tipJob || !nivelExperienta || !idDomeniu) {
+    return res.status(400).json({
+      error: "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
+    });
+  }
+
+  const min = salariuMin !== "" ? Number(salariuMin) : null;
+  const max = salariuMax !== "" ? Number(salariuMax) : null;
+
+  if (min === null && max === null) {
+    return res.status(400).json({
+      error: "Trebuie să completezi cel puțin salariul minim sau maxim",
+    });
+  }
+
+  if (min !== null && max !== null && max < min) {
+    return res.status(400).json({
+      error: "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
+    });
+  }
+
+  try {
+    const sql = `
+      INSERT INTO Job (
+        id_job,
+        titlu,
+        descriere,
+        tip_job,
+        nivel_experienta,
+        salariu_min,
+        salariu_max,
+        id_companie,
+        link_extern,
+        id_domeniu
+      ) VALUES (
+        seq_job.NEXTVAL,
+        :titlu,
+        :descriere,
+        :tipJob,
+        :nivelExperienta,
+        :salariuMin,
+        :salariuMax,
+        :companyId,
+        :linkCariera,
+        :idDomeniu
+      )
+      RETURNING id_job INTO :id_job
+    `;
+
+    const binds = {
+      titlu,
+      descriere: descriere || null,
+      tipJob,
+      nivelExperienta,
+      salariuMin: min,
+      salariuMax: max,
+      companyId: idCompanie,
+      linkCariera: linkCariera || null,
+      idDomeniu,
+      id_job: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+    };
+
+    const result = await executeQuery(sql, binds, { autoCommit: true });
+
+    res.json({
+      message: "Job creat cu succes!",
+      jobId: result.outBinds.id_job[0],
+    });
+  } catch (err) {
+    console.error("Eroare la crearea jobului:", err);
+    res.status(500).json({
+      error: "Eroare internă la crearea jobului",
+      details: err.message,
+    });
+  }
+});
+
+// Update Job
+router.put("/update/:id", authenticateToken, async (req, res) => {
+  const jobId = Number(req.params.id);
+  
+  const {
+    titlu,
+    tipJob,
+    nivelExperienta,
+    salariuMin,
+    salariuMax,
+    descriere,
+    linkCariera,
+    idDomeniu,
+    idCompanie
+  } = req.body;
+
+  if (!titlu || !tipJob || !nivelExperienta || !idDomeniu) {
+    return res.status(400).json({
+      error: "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
+    });
+  }
+
+  const min = salariuMin !== "" ? Number(salariuMin) : null;
+  const max = salariuMax !== "" ? Number(salariuMax) : null;
+
+  if (min === null && max === null) {
+    return res.status(400).json({
+      error: "Trebuie să completezi cel puțin salariul minim sau maxim",
+    });
+  }
+
+  if (min !== null && max !== null && max < min) {
+    return res.status(400).json({
+      error: "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
+    });
+  }
+
+  try {
+    const sql = `
+      UPDATE Job SET
+        titlu = :titlu,
+        descriere = :descriere,
+        tip_job = :tipJob,
+        nivel_experienta = :nivelExperienta,
+        salariu_min = :salariuMin,
+        salariu_max = :salariuMax,
+        id_companie = :companyId,
+        link_extern = :linkCariera,
+        id_domeniu = :idDomeniu
+      WHERE id_job = :jobId
+    `;
+
+    const binds = {
+      titlu,
+      descriere: descriere || null,
+      tipJob,
+      nivelExperienta,
+      salariuMin: min,
+      salariuMax: max,
+      companyId: idCompanie,
+      linkCariera: linkCariera || null,
+      idDomeniu,
+      jobId,
+    };
+
+    await executeQuery(sql, binds, { autoCommit: true });
+
+    res.json({ message: "Job actualizat cu succes!" });
+  } catch (err) {
+    console.error(`Eroare la actualizarea jobului ${jobId}:`, err);
+    res.status(500).json({ error: "Eroare internă la actualizarea jobului" });
   }
 });
 

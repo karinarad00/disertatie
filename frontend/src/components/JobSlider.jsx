@@ -24,7 +24,7 @@ const JobSlider = ({ jobs, loading = false }) => {
     slidesToShow: 1,
     slidesToScroll: 1,
   };
-
+  
   return (
     <div className="w-full mb-10 px-2">
       {loading ? (
@@ -58,6 +58,6 @@ const JobSlider = ({ jobs, loading = false }) => {
       )}
     </div>
   );
-}
+};
 
 export default JobSlider;
