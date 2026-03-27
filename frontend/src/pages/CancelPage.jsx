@@ -4,6 +4,29 @@ import { useNavigate } from "react-router-dom";
 const CancelPage = () => {
   const navigate = useNavigate();
 
+  const handleGoBack = () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    if (!user || !user.role) {
+      navigate("/profile");
+      return;
+    }
+
+    switch (user.role) {
+      case "Candidat":
+        navigate("/profile");
+        break;
+      case "Administrator":
+        navigate("/stats");
+        break;
+      case "Angajator":
+        navigate("/company");
+        break;
+      default:
+        navigate("/profile");
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 p-6">
       <h1 className="text-4xl font-bold mb-4 text-red-600">
@@ -14,7 +37,7 @@ const CancelPage = () => {
         de profil și să încerci din nou.
       </p>
       <button
-        onClick={() => navigate("/profile")}
+        onClick={handleGoBack}
         className="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
       >
         Înapoi la profil

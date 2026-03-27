@@ -1,60 +1,101 @@
-import React from "react";
-import Slider from "react-slick";
-import { Link } from "react-router-dom";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+"use client";
 
-// Imagini de birouri
-const officeBackgrounds = [
-  "https://images.unsplash.com/photo-1718220216044-006f43e3a9b1?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1572521165329-b197f9ea3da6?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1552581234-26160f608093?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1685946973834-81f1c465ec0c?auto=format&fit=crop&w=800&q=80",
+import React, { useEffect } from "react";
+import { Link } from "react-router-dom";
+import useEmblaCarousel from "embla-carousel-react";
+
+// Static announcements
+const announcements = [
+  {
+    id: "a1",
+    title: "New Feature: AI-Powered Job Matching",
+    description:
+      "Get personalized job recommendations based on your skills and experience",
+    type: "announcement",
+  },
+  {
+    id: "a2",
+    title: "1000+ New Jobs Added This Week",
+    description:
+      "Explore opportunities from top companies in tech, finance, and more",
+    type: "announcement",
+  },
+  {
+    id: "a3",
+    title: "Career Fair Event - March 20th",
+    description: "Connect with leading employers at our virtual career fair",
+    type: "announcement",
+  },
 ];
 
-const JobSlider = ({ jobs, loading = false }) => {
-  const settings = {
-    dots: true,
-    infinite: true,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    speed: 800,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-  };
-  
+const JobSlider = ({ jobs = [], loading = false }) => {
+  const [emblaRef, embla] = useEmblaCarousel({
+    loop: true,
+    skipSnaps: false,
+    dragFree: false,
+  });
+
+  const slides = [...announcements, ...jobs];
+
+  // Optional: autoplay
+  useEffect(() => {
+    if (!embla) return;
+    const autoplay = () => {
+      if (embla.canScrollNext()) {
+        embla.scrollNext();
+      } else {
+        embla.scrollTo(0);
+      }
+    };
+    const interval = setInterval(autoplay, 3000);
+    return () => clearInterval(interval);
+  }, [embla]);
+
   return (
-    <div className="w-full mb-10 px-2">
+    <div className="w-full mb-10 overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-2">
       {loading ? (
         <div className="space-y-4 animate-pulse">
-          <div className="h-80 bg-gray-300 shadow-lg"></div>
+          <div className="h-48 bg-gray-300 rounded-lg"></div>
         </div>
       ) : (
-        <Slider {...settings}>
-          {jobs.map((job, index) => (
-            <Link
-              to={`/job/${job.ID_JOB}`}
-              key={job.ID_JOB}
-              className="block px-2 text-white"
-            >
-              <div
-                className="h-80 shadow-lg rounded-xl overflow-hidden bg-cover bg-center"
-                style={{
-                  backgroundImage: `url(${
-                    officeBackgrounds[index % officeBackgrounds.length]
-                  })`,
-                }}
-              >
-                <div className="h-full w-full bg-black bg-opacity-60 p-6 flex flex-col justify-end">
-                  <h3 className="text-xl font-bold">{job.TITLU}</h3>
-                  <p className="text-sm">{job.DENUMIRE_COMPANIE}</p>
+        <div ref={emblaRef} className="overflow-hidden">
+          <div className="flex">
+            {slides.map((item) => {
+              if (item.type === "announcement") {
+                return (
+                  <div key={item.id} className="flex-shrink-0 w-full px-2">
+                    <div className="rounded-lg p-6 bg-transparent text-white w-full h-full">
+                      <h3 className="text-xl font-semibold mb-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm">{item.description}</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Jobs → add "Promoted" label
+              return (
+                <div key={item.ID_JOB} className="flex-shrink-0 w-full px-2">
+                  <Link
+                    to={`/job/${item.ID_JOB}`}
+                    className="block w-full h-full"
+                  >
+                    <div className="rounded-lg p-6 bg-transparent text-white w-full h-full relative">
+                      <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                        {item.TITLU}{" "}
+                        <span className="bg-yellow-400 text-blue-900 font-bold text-xs px-2 py-0.5 rounded-full">
+                          Promovat
+                        </span>
+                      </h3>
+                      <p className="text-sm">{item.DENUMIRE_COMPANIE}</p>
+                    </div>
+                  </Link>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </Slider>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

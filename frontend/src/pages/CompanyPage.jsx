@@ -80,19 +80,6 @@ export default function CompanyProfile() {
     fetchJobs();
   }, [user]);
 
-  // ======================
-  // Functii pentru Quick Actions
-  // ======================
-
-  const handleMatchClick = () => {
-    if (!user) return;
-    if (user.subscriptie_angajatori === 1) {
-      navigate("/candidate-match");
-    } else {
-      navigate("/candidate-match-subscription");
-    }
-  };
-
   if (loading) return <p className="p-6">Se încarcă datele companiei...</p>;
   if (!company)
     return <p className="p-6 text-red-500">Compania nu a fost găsită.</p>;
@@ -176,7 +163,7 @@ export default function CompanyProfile() {
               </button>
 
               <button
-                onClick={handleMatchClick}
+                onClick={() => navigate("/matching")}
                 className="flex flex-col items-center gap-3 p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <Users className="size-8" />

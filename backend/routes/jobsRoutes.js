@@ -7,21 +7,22 @@ const cacheMiddleware = require("../middleware/cacheMiddleware");
 const { cache } = require("../middleware/cacheMiddleware");
 
 // Ruta pentru joburile de la companiile cu subscriptie activa
-router.get("/paid", async (req, res) => {
+router.get("/promoted", async (req, res) => {
   try {
     const jobs = await executeQuery(`
-      SELECT j.*
+      SELECT 
+        j.ID_JOB, 
+        j.TITLU, 
+        j.PROMOTED,
+        c.DENUMIRE_COMPANIE
       FROM job j
       JOIN companie c ON j.ID_COMPANIE = c.ID_COMPANIE
-      JOIN utilizator u ON u.ID_COMPANIE = c.ID_COMPANIE
-      WHERE u.SUBSCRIPTIE_ANGAJATORI = 1
+      WHERE j.PROMOTED = 1
     `);
     res.json(jobs);
   } catch (err) {
-    console.error("Eroare în /api/jobs/paid:", err);
-    res
-      .status(500)
-      .json({ error: "Eroare la preluarea joburilor cu subscriptie activa" });
+    console.error("Eroare în /promoted:", err);
+    res.status(500).json({ error: "Eroare la preluarea joburilor promovate" });
   }
 });
 

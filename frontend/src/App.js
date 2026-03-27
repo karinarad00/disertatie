@@ -13,6 +13,7 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import CompanyPage from "./pages/CompanyPage";
 import PromoteJob from "./pages/PromoteJob";
+import JobMatching from "./pages/JobMatching";
 import JobDetailsPage from "./pages/JobDetailsPage";
 import MapPage from "./pages/MapPage";
 import SuccessPage from "./pages/SuccessPage";
@@ -43,6 +44,7 @@ function App() {
         <Route path="/stats" element={<AdminPage />} />
         <Route path="/company" element={<CompanyPage />} />
         <Route path="/promote-job" element={<PromoteJob />} />
+        <Route path="/matching" element={<JobMatching />} />
         <Route path="/job/:id" element={<JobDetailsPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/success" element={<SuccessPage />} />

@@ -30,7 +30,7 @@ const HomePage = () => {
 
   // fetch paid jobs
   useEffect(() => {
-    fetch("http://localhost:5000/api/jobs/paid")
+    fetch("http://localhost:5000/api/jobs/promoted")
       .then((res) => res.json())
       .then((data) => {
         setPaidJobs(data);
