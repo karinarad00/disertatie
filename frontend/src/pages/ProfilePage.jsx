@@ -10,12 +10,14 @@ import {
   MapPin,
   Briefcase,
 } from "lucide-react";
+import JobCard from "../components/JobCard";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [favoriteJobs, setFavoriteJobs] = useState([]);
   const navigate = useNavigate();
 
   const logoutAndRedirect = () => {
@@ -90,7 +92,7 @@ export default function ProfilePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localUser.token}`,
           },
-          body: JSON.stringify({ userId: user.id, prodType }),
+          body: JSON.stringify({ userId: localUser.id, prodType }),
         },
       );
 
@@ -105,6 +107,7 @@ export default function ProfilePage() {
     }
   };
 
+  // Preluăm datele utilizatorului
   useEffect(() => {
     const userString = localStorage.getItem("user");
     if (!userString) return setError("Nu ești autentificat.");
@@ -143,6 +146,34 @@ export default function ProfilePage() {
         setUser(null);
       });
   }, [navigate]);
+
+  // Preluăm joburile favorite (doar dacă utilizatorul e Candidat)
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!user || user.role !== "Candidat") return;
+
+      const userString = localStorage.getItem("user");
+      if (!userString) return;
+
+      const localUser = JSON.parse(userString);
+
+      try {
+        const res = await fetch("http://localhost:5000/api/favorites/all", {
+          headers: { Authorization: `Bearer ${localUser.token}` },
+        });
+
+        if (res.status === 401) return logoutAndRedirect();
+
+        const jobsData = await res.json();
+        console.log("Joburi favorite:", jobsData);
+        setFavoriteJobs(jobsData);
+      } catch (err) {
+        console.error("Eroare la preluarea joburilor favorite:", err);
+      }
+    };
+
+    fetchFavorites();
+  }, [user]);
 
   if (error)
     return (
@@ -200,9 +231,11 @@ export default function ProfilePage() {
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4 bg-gray-50 flex justify-center items-center">
               {user.cv_url ? (
                 <iframe
-                  src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(user.cv_url)}`}
+                  src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(
+                    user.cv_url,
+                  )}`}
                   title="Preview CV"
-                  className="w-full h-[32rem] border rounded"
+                  className="w-full h-[20rem] border rounded"
                 />
               ) : (
                 <div className="flex flex-col items-center text-gray-500">
@@ -249,6 +282,66 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Lista joburilor salvate */}
+          {user.role === "Candidat" && favoriteJobs.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4">Joburi Salvate</h2>
+              <div className="space-y-4">
+                {favoriteJobs.map((job) => (
+                  <div
+                    key={job.ID_JOB}
+                    className="border rounded-lg p-4 hover:shadow-md transition-shadow flex items-start justify-between cursor-pointer"
+                    onClick={() => navigate(`/all/${job.ID_JOB}`)}
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">
+                        {job.TITLU}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        {job.companie && (
+                          <div className="flex items-center gap-1">
+                            <Briefcase className="size-4" />
+                            <span>{job.DENUMIRE_COMPANIE}</span>
+                          </div>
+                        )}
+                        {job.LOCATIE && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="size-4" />
+                            <span>{job.LOCATIE}</span>
+                          </div>
+                        )}
+                        {job.DATA_POSTARII && (
+                          <span>
+                            Posted:{" "}
+                            {new Date(job.DATA_POSTARII).toLocaleDateString(
+                              "ro-RO",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              },
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/job/${job.ID_JOB}`);
+                        }}
+                      >
+                        Vezi
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
