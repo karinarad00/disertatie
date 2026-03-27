@@ -4,6 +4,7 @@ const { executeQuery } = require("../db");
 const oracledb = require("oracledb");
 const authenticateToken = require("../middleware/authMiddleware");
 const cacheMiddleware = require("../middleware/cacheMiddleware");
+const { cache } = require("../middleware/cacheMiddleware");
 
 // Ruta pentru joburile de la companiile cu subscriptie activa
 router.get("/paid", async (req, res) => {
@@ -256,7 +257,7 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
     idDomeniu,
     idCompanie
   } = req.body;
-
+  
   if (!titlu || !tipJob || !nivelExperienta || !idDomeniu) {
     return res.status(400).json({
       error: "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
@@ -307,6 +308,8 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
     };
 
     await executeQuery(sql, binds, { autoCommit: true });
+
+    cache.del(`/api/jobs/${jobId}`);
 
     res.json({ message: "Job actualizat cu succes!" });
   } catch (err) {
