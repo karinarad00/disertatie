@@ -128,21 +128,32 @@ router.get("/:id", async (req, res) => {
 // GET joburi active pentru companie cu numărul de aplicanți
 router.get("/by-company/:id", cacheMiddleware, async (req, res) => {
   const id = Number(req.params.id);
-  
+  const { promotable } = req.query; // optional query param: ?promotable=1
+
   try {
-    const jobs = await executeQuery(
-      `SELECT 
-         j.id_job AS "id",
-         j.titlu AS "title",
-         COUNT(aj.id_aplicare) AS "applicants",
-         TO_CHAR(j.data_postarii, 'DD Mon YYYY') AS "posted"
-       FROM Job j
-       LEFT JOIN Aplicare_Job aj ON j.id_job = aj.id_job
-       WHERE j.id_companie = :id
-       GROUP BY j.id_job, j.titlu, j.data_postarii
-       ORDER BY j.data_postarii DESC`,
-      { id: Number(id) },
-    );
+    let sql = `
+      SELECT 
+        j.id_job AS "id",
+        j.titlu AS "title",
+        j.promoted AS "promoted",
+        COUNT(aj.id_aplicare) AS "applicants",
+        TO_CHAR(j.data_postarii, 'DD Mon YYYY') AS "posted"
+      FROM Job j
+      LEFT JOIN Aplicare_Job aj ON j.id_job = aj.id_job
+      WHERE j.id_companie = :id
+    `;
+
+    // filtrare optională pentru joburile care pot fi promovate
+    if (promotable === "1") {
+      sql += ` AND j.promoted = 0`;
+    }
+
+    sql += `
+      GROUP BY j.id_job, j.titlu, j.data_postarii, j.promoted
+      ORDER BY j.data_postarii DESC
+    `;
+
+    const jobs = await executeQuery(sql, { id });
 
     res.json(jobs);
   } catch (err) {

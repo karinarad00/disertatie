@@ -42,7 +42,6 @@ export default function CompanyProfile() {
     }
   };
 
- 
   useEffect(() => {
     async function fetchData() {
       const userString = localStorage.getItem("user");
@@ -75,25 +74,24 @@ export default function CompanyProfile() {
     fetchData();
   }, [navigate]);
 
-  // 2. Effect separat pentru joburi, apelat **după ce user este setat**
+  // Effect separat pentru joburi
   useEffect(() => {
     if (!user) return;
-
-    const fetchJobs = async () => {
-      try {
-        const resJobs = await fetch(
-          `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
-        );
-        if (!resJobs.ok) throw new Error("Eroare la preluarea joburilor");
-        const jobsData = await resJobs.json();
-        setJobs(jobsData);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
     fetchJobs();
-  }, [user]); 
+  }, [user]);
+
+  // ======================
+  // Functii pentru Quick Actions
+  // ======================
+
+  const handleMatchClick = () => {
+    if (!user) return;
+    if (user.subscriptie_angajatori === 1) {
+      navigate("/candidate-match");
+    } else {
+      navigate("/candidate-match-subscription");
+    }
+  };
 
   if (loading) return <p className="p-6">Se încarcă datele companiei...</p>;
   if (!company)
@@ -133,13 +131,11 @@ export default function CompanyProfile() {
               <div className="flex items-start gap-2 justify-center">
                 <MapPin className="size-5 mt-1" />
                 <div className="text-sm text-left">
-                  {company.locations?.length > 0 ? (
-                    company.locations.map((loc, i) => (
-                      <div key={i}>{loc.address}</div>
-                    ))
-                  ) : (
-                    <span>Fără locații</span>
-                  )}
+                  {company.locations?.length > 0
+                    ? company.locations.map((loc, i) => (
+                        <div key={i}>{loc.address}</div>
+                      ))
+                    : "Fără locații"}
                 </div>
               </div>
               <div className="flex items-center gap-2 justify-center">
@@ -180,7 +176,7 @@ export default function CompanyProfile() {
               </button>
 
               <button
-                onClick={() => navigate("/candidate-match")}
+                onClick={handleMatchClick}
                 className="flex flex-col items-center gap-3 p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <Users className="size-8" />

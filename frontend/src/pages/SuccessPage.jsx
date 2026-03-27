@@ -6,22 +6,23 @@ const SuccessPage = () => {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [productType, setProductType] = useState(null);
+  const [jobId, setJobId] = useState(null);
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
-    
+
     if (!sessionId) {
-      // fallback dacă nu există sesiune
       setProductType("pagina-produs");
       setLoading(false);
       return;
     }
 
     // Cere backend-ului detalii sesiune Stripe
-    fetch(`/api/stripe/session/${sessionId}`)
+    fetch(`/api/subscription/session/${sessionId}`)
       .then((res) => res.json())
       .then((data) => {
         setProductType(data.prodType || "pagina-produs");
+        setJobId(data.jobId || null);
       })
       .catch(() => setProductType("pagina-produs"))
       .finally(() => setLoading(false));
@@ -30,18 +31,28 @@ const SuccessPage = () => {
   useEffect(() => {
     if (!loading && productType) {
       const timer = setTimeout(() => {
-        if (productType === "analiza_cv") {
-          navigate("/analiza");
-        } else if (productType === "primeste_sugestii") {
-          navigate("/sugestii");
-        } else {
-          navigate("/pagina-produs");
+        switch (productType) {
+          case "analiza_cv":
+            navigate("/analiza");
+            break;
+          case "primeste_sugestii":
+            navigate("/sugestii");
+            break;
+          case "promovare_job":
+            if (jobId) navigate(`/job/${jobId}`);
+            else navigate("/company"); // fallback dacă lipsește jobId
+            break;
+          case "candidate_match":
+            navigate("/candidate-match");
+            break;
+          default:
+            navigate("/pagina-produs");
         }
       }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [loading, productType, navigate]);
+  }, [loading, productType, jobId, navigate]);
 
   if (loading) return <div>Loading...</div>;
 
@@ -55,9 +66,23 @@ const SuccessPage = () => {
       </p>
       <button
         onClick={() => {
-          if (productType === "analiza_cv") navigate("/analiza");
-          else if (productType === "primeste_sugestii") navigate("/sugestii");
-          else navigate("/pagina-produs");
+          switch (productType) {
+            case "analiza_cv":
+              navigate("/analiza");
+              break;
+            case "primeste_sugestii":
+              navigate("/sugestii");
+              break;
+            case "promovare_job":
+              if (jobId) navigate(`/job/${jobId}`);
+              else navigate("/company");
+              break;
+            case "candidate_match":
+              navigate("/candidate-match");
+              break;
+            default:
+              navigate("/pagina-produs");
+          }
         }}
         className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
       >
