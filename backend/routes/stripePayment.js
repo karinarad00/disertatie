@@ -174,8 +174,11 @@ router.get("/session/:sessionId", async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(
       req.params.sessionId,
     );
+
     const prodType = session.metadata?.prodType || null;
-    res.json({ prodType });
+    const jobId = session.metadata?.jobId || null; 
+
+    res.json({ prodType, jobId }); 
   } catch (err) {
     console.error("Eroare recuperare sesiune Stripe:", err);
     res.status(500).json({ error: "Nu s-a putut recupera sesiunea" });

@@ -40,10 +40,11 @@ const SuccessPage = () => {
             break;
           case "promovare_job":
             if (jobId) navigate(`/job/${jobId}`);
-            else navigate("/company"); // fallback dacă lipsește jobId
+            else navigate("/company");
             break;
           case "candidate_match":
-            navigate("/candidate-match");
+            if (jobId) navigate(`/candidate-match/${jobId}`);
+            else navigate("/company");
             break;
           default:
             navigate("/pagina-produs");
@@ -78,7 +79,8 @@ const SuccessPage = () => {
               else navigate("/company");
               break;
             case "candidate_match":
-              navigate("/candidate-match");
+              if (jobId) navigate(`/candidate-match/${jobId}`);
+              else navigate("/company");
               break;
             default:
               navigate("/pagina-produs");

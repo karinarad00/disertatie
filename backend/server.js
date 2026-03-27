@@ -10,6 +10,7 @@ const companyRoutes = require("./routes/companyRoutes");
 const cacheMiddleware = require("./middleware/cacheMiddleware");
 const cvRoute = require("./routes/cvRoute");
 const stripePaymentRoute = require("./routes/stripePayment");
+const aplicariRoutes = require("./routes/aplicariRoutes");
 
 const app = express();
 const port = 5000;
@@ -40,6 +41,7 @@ app.use("/api/domenii", domeniiRoutes);
 app.use("/api/companii", companyRoutes);
 app.use("/api/cv", cvRoute);
 app.use("/api/stripe", stripePaymentRoute);
+app.use("/api/aplicari", aplicariRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

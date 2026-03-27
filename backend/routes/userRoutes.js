@@ -57,7 +57,7 @@ router.post("/login", async (req, res) => {
 
   try {
     const result = await executeQuery(
-      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url, id_companie
+      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url, id_companie, subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori
        FROM Utilizator
        WHERE email = :email`,
       { email },
@@ -94,6 +94,9 @@ router.post("/login", async (req, res) => {
       imagine_profil: user.IMAGINE_PROFIL,
       cv_url: user.CV_URL,
       id_companie: user.ID_COMPANIE,
+      subscriptie_cv: user.SUBSCRIPTIE_CV,
+      subscriptie_recomandari: user.SUBSCRIPTIE_RECOMANDARI,
+      subscriptie_angajatori: user.SUBSCRIPTIE_ANGAJATORI,
     });
   } catch (error) {
     console.error("Eroare login:", error);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Target, DollarSign, Calendar } from "lucide-react";
+import { ArrowLeft, Target, Calendar } from "lucide-react";
 
 export default function JobMatching() {
   const navigate = useNavigate();
@@ -9,19 +9,17 @@ export default function JobMatching() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  const PRICE = 40; // preț serviciu Job Matching
+  const PRICE = 40;
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) return navigate("/login");
 
-    // verificăm dacă serviciul a fost plătit
-    setPaid(user.subscriptie_angajati === 1);
+    // verificare plată
+    setPaid(user.subscriptie_angajatori === 1);
 
-    // preluăm joburile 
-    fetch(
-      `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
-    )
+    // fetch joburi
+    fetch(`http://localhost:5000/api/jobs/by-company/${user.id_companie}`)
       .then((res) => res.json())
       .then((data) => {
         setJobs(data);
@@ -32,6 +30,7 @@ export default function JobMatching() {
 
   const handlePayment = async () => {
     if (!selectedJob) return alert("Selectează un job!");
+
     const user = JSON.parse(localStorage.getItem("user"));
 
     try {
@@ -50,16 +49,21 @@ export default function JobMatching() {
 
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else console.error("Nu am primit URL de checkout:", data);
+      else console.error("Nu am primit URL Stripe");
     } catch (err) {
-      console.error("Eroare creare sesiune Stripe:", err);
+      console.error("Eroare Stripe:", err);
     }
+  };
+
+  const handleGoToMatching = () => {
+    if (!selectedJob) return alert("Selectează un job!");
+    navigate(`/candidate-match/${selectedJob}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Back */}
+        {/* BACK */}
         <button
           onClick={() => navigate("/company")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
@@ -68,22 +72,21 @@ export default function JobMatching() {
           Înapoi la profil companie
         </button>
 
-        {/* Header */}
+        {/* HEADER */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Target className="size-8 text-green-600" />
             <h1 className="text-3xl font-bold">Job Matching</h1>
           </div>
           <p className="text-gray-600">
-            Acces complet la procesul automat de Job Matching pentru toate
-            joburile eligibile.
+            Acces complet la procesul automat de matching pentru toate joburile.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT - Select job + info */}
+          {/* LEFT */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Select Job */}
+            {/* JOB SELECT */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">Selectează jobul</h2>
 
@@ -102,7 +105,6 @@ export default function JobMatching() {
                         type="radio"
                         checked={selectedJob === job.id}
                         onChange={() => setSelectedJob(job.id)}
-                        disabled={!paid} // activ doar dacă a plătit
                       />
                       <div>
                         <div className="font-semibold">{job.title}</div>
@@ -116,36 +118,35 @@ export default function JobMatching() {
               </div>
             </div>
 
-            {/* INFO SERVICE */}
+            {/* INFO */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold text-green-900 mb-2">
                 Informații serviciu
               </h2>
               <p className="text-green-800 text-sm">
                 Plata se efectuează o singură dată pentru acces complet la toate
-                joburile eligibile pentru Job Matching. Aceasta permite acces pe
-                termen lung la rezultatele generate și posibilitatea de refresh
-                pentru joburile deja procesate.
+                joburile eligibile. Poți vedea candidații și reîmprospăta
+                rezultatele oricând.
               </p>
             </div>
           </div>
 
-          {/* RIGHT - Summary + Payment + Stats */}
+          {/* RIGHT */}
           <div className="space-y-6">
-            {/* Summary */}
+            {/* SUMMARY */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="font-semibold mb-4">Sumar comandă</h3>
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Job selectat</span>
+                  <span>Job</span>
                   <span className="font-semibold">
                     {jobs.find((j) => j.id === selectedJob)?.title}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span>Preț serviciu</span>
+                  <span>Preț</span>
                   <span className="font-semibold">{PRICE} RON</span>
                 </div>
 
@@ -157,20 +158,31 @@ export default function JobMatching() {
                 </div>
               </div>
 
+              {/* BUTON PRINCIPAL */}
               <button
                 onClick={handlePayment}
+                disabled={paid}
                 className={`w-full mt-6 py-3 rounded-lg text-white ${
                   paid
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-green-600 hover:bg-green-700"
                 }`}
-                disabled={paid}
               >
                 {paid ? "Plata efectuată" : "Plătește pentru acces"}
               </button>
+
+              {/* BUTON MATCHING */}
+              {paid && selectedJob && (
+                <button
+                  onClick={handleGoToMatching}
+                  className="w-full mt-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                >
+                  Vezi candidații pentru job
+                </button>
+              )}
             </div>
 
-            {/* Stats */}
+            {/* STATS */}
             <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-lg p-6">
               <h3 className="font-bold mb-3">Rezultate estimate</h3>
 
@@ -181,7 +193,7 @@ export default function JobMatching() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Calendar />
-                  <span>Procese mai rapide de recrutare</span>
+                  <span>Proces mai rapid de recrutare</span>
                 </div>
               </div>
             </div>
