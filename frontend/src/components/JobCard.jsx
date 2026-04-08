@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { MapPin, Clock, DollarSign, Bookmark } from "lucide-react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import axios from "../axiosClient";
 import ImageWithFallback from "./ImageWithFallback";
 
 const JobCard = ({ job, isFavorite: initialFavorite, user, setFavorites }) => {

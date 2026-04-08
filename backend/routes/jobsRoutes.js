@@ -26,43 +26,141 @@ router.get("/promoted", async (req, res) => {
   }
 });
 
-// Ruta pentru toate joburile
+// Ruta pentru toate joburile care se potrivesc cu filtrele de căutare si cu paginare
 router.get("/all", async (req, res) => {
   try {
-    const jobs = await executeQuery(`
-      SELECT 
-        j.id_job AS ID_JOB,
-        j.titlu AS TITLU,
-        j.data_postarii AS DATA_POSTARII,
-        j.tip_job AS TIP_JOB,
-        j.nivel_experienta AS NIVEL_EXPERIENTA,
-        c.id_companie AS ID_COMPANIE,
-        c.denumire_companie AS DENUMIRE_COMPANIE,
-        c.logo AS LOGO,
-        LISTAGG(o.denumire_oras, ', ') WITHIN GROUP (ORDER BY o.denumire_oras) AS LOCATIE,
-        d.denumire_domeniu AS DOMENIU
+    const {
+      search,
+      city,
+      company,
+      experience,
+      domain,
+      period,
+      page = 1,
+      limit = 5,
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+
+    let filters = [];
+    let binds = {};
+
+    if (search) {
+      filters.push(`LOWER(j.titlu) LIKE :search`);
+      binds.search = `%${search.toLowerCase()}%`;
+    }
+
+    if (city) {
+      filters.push(`LOWER(o.denumire_oras) LIKE :city`);
+      binds.city = `%${city.toLowerCase()}%`;
+    }
+
+    if (company) {
+      filters.push(`c.denumire_companie = :company`);
+      binds.company = company;
+    }
+
+    if (experience) {
+      filters.push(`j.nivel_experienta = :experience`);
+      binds.experience = experience;
+    }
+
+    if (domain) {
+      filters.push(`d.denumire_domeniu = :domain`);
+      binds.domain = domain;
+    }
+
+    if (period) {
+      if (period === "24h") filters.push(`j.data_postarii >= SYSDATE - 1`);
+      if (period === "3d") filters.push(`j.data_postarii >= SYSDATE - 3`);
+      if (period === "7d") filters.push(`j.data_postarii >= SYSDATE - 7`);
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+
+    // 🔢 TOTAL COUNT
+    const countSql = `
+      SELECT COUNT(DISTINCT j.id_job) AS TOTAL
       FROM job j
       LEFT JOIN companie c ON j.id_companie = c.id_companie
       LEFT JOIN centrucompanie cc ON cc.id_companie = c.id_companie
       LEFT JOIN oras o ON cc.id_oras = o.id_oras
       LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
-      GROUP BY 
-        j.id_job, 
-        j.titlu, 
-        j.data_postarii, 
-        j.tip_job, 
-        j.nivel_experienta,
-        c.id_companie,
-        c.denumire_companie,
-        c.logo,
-        d.denumire_domeniu
-      ORDER BY j.data_postarii DESC
-    `);
+      ${whereClause}
+    `;
 
-    res.json(jobs);
+    const totalResult = await executeQuery(countSql, binds);
+    const total = totalResult[0].TOTAL;
+
+    // 📄 DATA QUERY
+    const sql = `
+      SELECT * FROM (
+        SELECT 
+          j.id_job AS ID_JOB,
+          j.titlu AS TITLU,
+          j.data_postarii AS DATA_POSTARII,
+          j.tip_job AS TIP_JOB,
+          j.nivel_experienta AS NIVEL_EXPERIENTA,
+          c.id_companie AS ID_COMPANIE,
+          c.denumire_companie AS DENUMIRE_COMPANIE,
+          c.logo AS LOGO,
+          LISTAGG(o.denumire_oras, ', ') 
+            WITHIN GROUP (ORDER BY o.denumire_oras) AS LOCATIE,
+          d.denumire_domeniu AS DOMENIU,
+          ROW_NUMBER() OVER (ORDER BY j.data_postarii DESC) rn
+        FROM job j
+        LEFT JOIN companie c ON j.id_companie = c.id_companie
+        LEFT JOIN centrucompanie cc ON cc.id_companie = c.id_companie
+        LEFT JOIN oras o ON cc.id_oras = o.id_oras
+        LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
+        ${whereClause}
+        GROUP BY 
+          j.id_job, j.titlu, j.data_postarii,
+          j.tip_job, j.nivel_experienta,
+          c.id_companie, c.denumire_companie,
+          c.logo, d.denumire_domeniu
+      )
+      WHERE rn BETWEEN :startRow AND :endRow
+    `;
+
+    binds.startRow = offset + 1;
+    binds.endRow = offset + Number(limit);
+
+    const jobs = await executeQuery(sql, binds);
+
+    // ✅ return BOTH
+    res.json({
+      jobs,
+      total,
+    });
   } catch (err) {
     console.error("Eroare în /api/jobs/all:", err);
-    res.status(500).json({ error: "Eroare la preluarea tuturor joburilor" });
+    res.status(500).json({ error: "Eroare la preluare" });
+  }
+});
+
+// Ruta pentru a prelua opțiunile unice pentru filtre (companii, domenii, experiență)
+router.get("/filters", async (req, res) => {
+  try {
+    const companies = await executeQuery(`
+      SELECT DISTINCT denumire_companie FROM companie
+    `);
+
+    const domains = await executeQuery(`
+      SELECT DISTINCT denumire_domeniu FROM domeniu
+    `);
+
+    const experience = await executeQuery(`
+      SELECT DISTINCT nivel_experienta FROM job
+    `);
+
+    res.json({
+      companies: companies.map((c) => c.DENUMIRE_COMPANIE),
+      domains: domains.map((d) => d.DENUMIRE_DOMENIU),
+      experience: experience.map((e) => e.NIVEL_EXPERIENTA),
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Eroare la filtre" });
   }
 });
 
@@ -97,7 +195,7 @@ router.get("/:id", async (req, res) => {
       LEFT JOIN domeniu d ON j.id_domeniu = d.id_domeniu
       WHERE j.id_job = :id
       `,
-      { id }
+      { id },
     );
 
     if (jobs.length === 0) {
@@ -114,7 +212,7 @@ router.get("/:id", async (req, res) => {
       JOIN Oras o ON cc.id_oras = o.id_oras
       WHERE cc.id_companie = :companyId
       `,
-      { companyId: job.ID_COMPANIE || job.id_companie }
+      { companyId: job.ID_COMPANIE || job.id_companie },
     );
 
     job.adrese = addresses; // array de { address, city }
@@ -179,7 +277,8 @@ router.post("/create", authenticateToken, async (req, res) => {
 
   if (!titlu || !tipJob || !nivelExperienta || !idDomeniu) {
     return res.status(400).json({
-      error: "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
+      error:
+        "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
     });
   }
 
@@ -194,7 +293,8 @@ router.post("/create", authenticateToken, async (req, res) => {
 
   if (min !== null && max !== null && max < min) {
     return res.status(400).json({
-      error: "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
+      error:
+        "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
     });
   }
 
@@ -257,7 +357,7 @@ router.post("/create", authenticateToken, async (req, res) => {
 // Update Job
 router.put("/update/:id", authenticateToken, async (req, res) => {
   const jobId = Number(req.params.id);
-  
+
   const {
     titlu,
     tipJob,
@@ -267,12 +367,13 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
     descriere,
     linkCariera,
     idDomeniu,
-    idCompanie
+    idCompanie,
   } = req.body;
-  
+
   if (!titlu || !tipJob || !nivelExperienta || !idDomeniu) {
     return res.status(400).json({
-      error: "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
+      error:
+        "Titlul, tipul jobului, nivelul experienței și domeniul sunt obligatorii",
     });
   }
 
@@ -287,7 +388,8 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
 
   if (min !== null && max !== null && max < min) {
     return res.status(400).json({
-      error: "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
+      error:
+        "Salariul maxim trebuie să fie mai mare sau egal decât salariul minim",
     });
   }
 
