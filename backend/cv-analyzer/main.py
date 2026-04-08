@@ -1,3 +1,4 @@
+import re
 import tempfile
 import os
 import requests
@@ -46,9 +47,26 @@ def ask_llm(prompt: str):
     )
     return chat.choices[0].message.content
 
+# ---------------- Helper: parse LLM JSON safely ----------------
+def parse_llm_json(response: str):
+    """
+    Extract JSON from LLM response, handling markdown/code fences.
+    """
+    # Try to extract JSON inside ```json ... ```
+    match = re.search(r'```json(.*?)```', response, re.DOTALL)
+    if match:
+        json_text = match.group(1).strip()
+    else:
+        # fallback: try to find {...} directly
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if match:
+            json_text = match.group(0)
+        else:
+            raise ValueError("No JSON found in LLM response")
+    return json.loads(json_text)
+
 #---------------- Job formatting ----------------
 def format_job_for_ui(job, idx):
-    # Map fields from your FAISS jobs to JobCard expected fields
     return {
         "ID_JOB": job.get("ID_JOB", idx + 1),
         "TITLU": job.get("TITLU") or job.get("title") or f"Job #{idx+1}",
@@ -65,6 +83,7 @@ def format_job_for_ui(job, idx):
 @app.post("/analyze")
 def analyze_cv(req: CVRequest):
     try:
+        # Download PDF
         pdf = requests.get(req.cvUrl).content
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf)
@@ -72,9 +91,9 @@ def analyze_cv(req: CVRequest):
 
         text = extract_text_from_pdf(path)
         os.unlink(path)
-        text = text[:4000]  # safety limit
+        text = text[:4000]
 
-        # Step 1: Analyze in English
+        # Step 1: Analyze CV in English
         analysis_prompt = f"""
 You are a professional CV reviewer.
 
@@ -83,19 +102,57 @@ Analyze the following CV and return STRICT JSON in this format:
 {{
 "strengths": [],
 "weaknesses": [],
-"improvements": []
+"improvements": [],
+"atsCompatibility": 0,
+"impact": 0,
+"readability": 0,
+"score": 0
 }}
+
+All scores should be from 0 to 100.
 
 CV:
 {text}
 """
-        analysis_json = ask_llm(analysis_prompt)
+        raw_response = ask_llm(analysis_prompt)
+        print("Raw analysis response:", raw_response)
 
-        # Step 2: Translate to Romanian
+        # Extract JSON from any surrounding text/code fences
+        json_match = re.search(r"```json\s*(\{.*?\})\s*```", raw_response, re.DOTALL)
+        if json_match:
+            json_text = json_match.group(1)
+        else:
+            # fallback: try to extract first {...} block
+            json_match = re.search(r"(\{.*\})", raw_response, re.DOTALL)
+            json_text = json_match.group(1) if json_match else "{}"
+
+        # Parse JSON safely
+        try:
+            data = json.loads(json_text)
+        except Exception as e:
+            print("JSON parse failed:", e)
+            data = {
+                "strengths": [],
+                "weaknesses": [],
+                "improvements": [],
+                "atsCompatibility": 75,
+                "impact": 75,
+                "readability": 75,
+                "score": 75,
+            }
+
+        # Ensure all scores are percentages 0-100
+        for key in ["atsCompatibility", "impact", "readability", "score"]:
+            value = data.get(key, 75)
+            if value <= 1:  # if model returns 0-1 scale
+                value = int(value * 100)
+            data[key] = min(max(int(value), 0), 100)
+
+        # Step 2: Translate to Romanian readable format
         translate_prompt = f"""
-Translate the following CV analysis into Romanian.
+Translate the following CV analysis into Romanian in a readable way.
 
-Convert it into clear readable text with this structure:
+Include sections:
 
 Puncte forte:
 - ...
@@ -106,47 +163,26 @@ Puncte slabe:
 Sugestii de îmbunătățire:
 - ...
 
-Analysis:
-{analysis_json}
+Include also ATS score, Impact, Readability, and Overall Score as percentages.
+
+Analysis JSON:
+{json.dumps(data)}
 """
         romanian_text = ask_llm(translate_prompt)
 
-        return {"recommendations": romanian_text}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------- JOB MATCHING ----------------
-@app.post("/suggestions")
-def job_suggestions(req: CVRequest):
-    try:
-        pdf = requests.get(req.cvUrl).content
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(pdf)
-            path = tmp.name
-
-        text = extract_text_from_pdf(path)
-        os.unlink(path)
-        text = text[:4000]
-
-        # --- FAISS search fără limită ---
-        top_jobs = search_jobs(text, top_k=20)
-
-        # --- Format for UI ---
-        formatted_jobs = [format_job_for_ui(job, idx) for idx, job in enumerate(top_jobs)]
-
-        # --- Optional LLM explanation ---
-        explanation = "Sugestii generate automat"
-
+        # Return recommendations + numeric scores
         return {
-            "jobs": formatted_jobs,
-            "explanation": explanation
+            "recommendations": romanian_text,
+            "atsCompatibility": data["atsCompatibility"],
+            "impact": data["impact"],
+            "readability": data["readability"],
+            "score": data["score"],
+            "strengths": data.get("strengths", []),
+            "weaknesses": data.get("weaknesses", []),
+            "suggestions": data.get("improvements", [])
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # ---------------- JOB-TO-CV MATCHING ----------------
