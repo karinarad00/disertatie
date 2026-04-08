@@ -18,7 +18,6 @@ from oracle_jobs import get_jobs
 
 # ---------------- ENV ----------------
 load_dotenv()
-
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
@@ -49,15 +48,10 @@ def ask_llm(prompt: str):
 
 # ---------------- Helper: parse LLM JSON safely ----------------
 def parse_llm_json(response: str):
-    """
-    Extract JSON from LLM response, handling markdown/code fences.
-    """
-    # Try to extract JSON inside ```json ... ```
     match = re.search(r'```json(.*?)```', response, re.DOTALL)
     if match:
         json_text = match.group(1).strip()
     else:
-        # fallback: try to find {...} directly
         match = re.search(r'\{.*\}', response, re.DOTALL)
         if match:
             json_text = match.group(0)
@@ -65,25 +59,25 @@ def parse_llm_json(response: str):
             raise ValueError("No JSON found in LLM response")
     return json.loads(json_text)
 
-#---------------- Job formatting ----------------
+# ---------------- Job formatting ----------------
 def format_job_for_ui(job, idx):
     return {
-        "ID_JOB": job.get("ID_JOB", idx + 1),
-        "TITLU": job.get("TITLU") or job.get("title") or f"Job #{idx+1}",
-        "DENUMIRE_COMPANIE": job.get("DENUMIRE_COMPANIE") or job.get("company") or "Companie",
-        "LOCATIE": job.get("LOCATIE") or job.get("location") or "România",
-        "SALARIU": job.get("SALARIU") or job.get("salary") or "",
-        "TIP_JOB": job.get("TIP_JOB") or job.get("type") or "",
-        "DESCRIERE": job.get("DESCRIERE") or job.get("description") or "Descriere lipsă",
-        "DATA_POSTARII": job.get("DATA_POSTARII") or None,
+        "ID_JOB": job.get("ID_JOB", idx + 1), 
+        "TITLU": job.get("TITLU") or job.get("title") or f"Job #{idx+1}", 
+        "DENUMIRE_COMPANIE": job.get("DENUMIRE_COMPANIE") or job.get("company") or "Companie", 
+        "LOCATIE": job.get("LOCATIE") or job.get("location") or "România", 
+        "SALARIU": job.get("SALARIU") or job.get("salary") or "", 
+        "TIP_JOB": job.get("TIP_JOB") or job.get("type") or "", 
+        "DESCRIERE": job.get("DESCRIERE") or job.get("description") or "Descriere lipsă", 
+        "DATA_POSTARII": job.get("DATA_POSTARII") or None, 
         "LOGO": job.get("LOGO") or "https://via.placeholder.com/80",
+        "matchScore": job.get("matchScore") or 0
     }
 
 # ---------------- CV ANALYSIS ----------------
 @app.post("/analyze")
 def analyze_cv(req: CVRequest):
     try:
-        # Download PDF
         pdf = requests.get(req.cvUrl).content
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf)
@@ -93,11 +87,10 @@ def analyze_cv(req: CVRequest):
         os.unlink(path)
         text = text[:4000]
 
-        # Step 1: Analyze CV in English
         analysis_prompt = f"""
 You are a professional CV reviewer.
 
-Analyze the following CV and return STRICT JSON in this format:
+Analyze the following CV and return STRICT JSON:
 
 {{
 "strengths": [],
@@ -109,28 +102,14 @@ Analyze the following CV and return STRICT JSON in this format:
 "score": 0
 }}
 
-All scores should be from 0 to 100.
-
 CV:
 {text}
 """
         raw_response = ask_llm(analysis_prompt)
-        print("Raw analysis response:", raw_response)
 
-        # Extract JSON from any surrounding text/code fences
-        json_match = re.search(r"```json\s*(\{.*?\})\s*```", raw_response, re.DOTALL)
-        if json_match:
-            json_text = json_match.group(1)
-        else:
-            # fallback: try to extract first {...} block
-            json_match = re.search(r"(\{.*\})", raw_response, re.DOTALL)
-            json_text = json_match.group(1) if json_match else "{}"
-
-        # Parse JSON safely
         try:
-            data = json.loads(json_text)
-        except Exception as e:
-            print("JSON parse failed:", e)
+            data = parse_llm_json(raw_response)
+        except Exception:
             data = {
                 "strengths": [],
                 "weaknesses": [],
@@ -138,39 +117,23 @@ CV:
                 "atsCompatibility": 75,
                 "impact": 75,
                 "readability": 75,
-                "score": 75,
+                "score": 75
             }
 
-        # Ensure all scores are percentages 0-100
         for key in ["atsCompatibility", "impact", "readability", "score"]:
             value = data.get(key, 75)
-            if value <= 1:  # if model returns 0-1 scale
+            if value <= 1:
                 value = int(value * 100)
             data[key] = min(max(int(value), 0), 100)
 
-        # Step 2: Translate to Romanian readable format
         translate_prompt = f"""
-Translate the following CV analysis into Romanian in a readable way.
-
-Include sections:
-
-Puncte forte:
-- ...
-
-Puncte slabe:
-- ...
-
-Sugestii de îmbunătățire:
-- ...
-
-Include also ATS score, Impact, Readability, and Overall Score as percentages.
+Translate the following CV analysis into Romanian:
 
 Analysis JSON:
 {json.dumps(data)}
 """
         romanian_text = ask_llm(translate_prompt)
 
-        # Return recommendations + numeric scores
         return {
             "recommendations": romanian_text,
             "atsCompatibility": data["atsCompatibility"],
@@ -185,35 +148,91 @@ Analysis JSON:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ---------------- JOB MATCHING cu matchScore LLM ----------------
+@app.post("/suggestions")
+def job_suggestions(req: CVRequest):
+    try:
+        # Download CV PDF
+        pdf = requests.get(req.cvUrl).content
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(pdf)
+            path = tmp.name
+
+        cv_text = extract_text_from_pdf(path)[:4000]
+        os.unlink(path)
+
+        top_k=10
+        # FAISS search - deja sortează descrescător după relevanță
+        top_jobs = search_jobs(cv_text, top_k=top_k)
+        jobs_with_scores = []
+
+        for idx, job in enumerate(top_jobs):
+            job_copy = job.copy()
+
+            # LLM matchScore
+            if idx < top_k:
+                job_desc = job.get("DESCRIERE") or job.get("description") or ""
+                llm_prompt = f"""
+Ești un expert HR. Returnează STRICT JSON:
+
+{{
+"matchScore": 0   # procent 0-100
+}}
+
+Job description:
+{job_desc}
+
+Candidate CV:
+{cv_text}
+"""
+                try:
+                    llm_response = ask_llm(llm_prompt)
+                    llm_data = parse_llm_json(llm_response)
+                    match_score = int(min(max(llm_data.get("matchScore", 0), 0), 100))
+                except Exception:
+                    match_score = 0
+            else:
+                match_score = 0
+
+            job_copy["matchScore"] = match_score
+            jobs_with_scores.append(job_copy)
+
+        # Formatează pentru UI
+        formatted_jobs = [format_job_for_ui(job, idx) for idx, job in enumerate(jobs_with_scores)]
+
+        return {
+            "jobs": formatted_jobs,
+            "explanation": "Joburile sunt ordonate descrescător după relevanță, matchScore calculat de LLM pentru primele k joburi."
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    
 # ---------------- JOB-TO-CV MATCHING ----------------
 from pydantic import BaseModel
 import faiss
 
 class JobCVMatchRequest(BaseModel):
     jobId: int
-    cvUrls: List[str]  # List of applicant CV PDF URLs
+    cvUrls: List[str]
 
 @app.post("/job-cv-match")
 def job_cv_match(req: JobCVMatchRequest):
-    """
-    For a given job, rank all applicant CVs by fit percentage using pre-embedded job vectors.
-    """
     try:
-        # Load FAISS index and metadata
         index = faiss.read_index(INDEX_PATH)
         with open(META_PATH, encoding="utf-8") as f:
             jobs_meta = json.load(f)
 
-        # Find the job
         job_meta = next((j for j in jobs_meta if j.get("id") == req.jobId or j.get("id_job") == req.jobId), None)
         if not job_meta:
             raise HTTPException(status_code=404, detail="Job not found")
 
         job_text = job_meta["text"]
-        job_vector = embed(job_text).reshape(1, -1)  # use your existing embed()
+        job_vector = embed(job_text).reshape(1, -1)
 
         results = []
-
         for cv_url in req.cvUrls:
             pdf = requests.get(cv_url).content
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -223,13 +242,11 @@ def job_cv_match(req: JobCVMatchRequest):
             cv_text = extract_text_from_pdf(path)[:4000]
             os.unlink(path)
 
-            # Compute cosine similarity with job vector
             cv_vector = embed(cv_text).reshape(1, -1)
             similarity = float(np.dot(job_vector, cv_vector.T) / 
                                (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
             score = round(similarity * 100, 2)
 
-            # Optional: LLM explanation
             explanation_prompt = f"""
 Job description:
 
@@ -249,9 +266,7 @@ Explain briefly why this candidate fits the job.
                 "explanation": explanation
             })
 
-        # Sort descending by fitScore
         results = sorted(results, key=lambda x: x["fitScore"], reverse=True)
-
         return {
             "job": job_meta,
             "rankedCandidates": results
