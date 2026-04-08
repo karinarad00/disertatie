@@ -21,7 +21,6 @@ const JobList = ({ jobs, loading = false }) => {
             "http://localhost:5000/api/favorites/list",
             { headers: { Authorization: `Bearer ${parsedUser.token}` } },
           );
-          console.log("Favorite jobs IDs:", res.data);
           setFavorites(res.data); // array de ID_JOB
         } catch (err) {
           console.error("Eroare la preluarea favorite:", err);

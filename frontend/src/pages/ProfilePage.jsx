@@ -9,8 +9,8 @@ import {
   Phone,
   MapPin,
   Briefcase,
+  Trash2,
 } from "lucide-react";
-import JobCard from "../components/JobCard";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -26,16 +26,14 @@ export default function ProfilePage() {
     navigate("/login");
   };
 
+  // Upload CV
   const handleFileChange = (e) => setSelectedFile(e.target.files[0] || null);
-
   const handleUploadClick = async () => {
     if (!selectedFile) return;
 
-    const userString = localStorage.getItem("user");
-    if (!userString)
-      return setError("Trebuie să fii autentificat pentru a încărca CV-ul.");
+    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!localUser.token) return setError("Trebuie să fii autentificat.");
 
-    const localUser = JSON.parse(userString);
     const formData = new FormData();
     formData.append("cv", selectedFile);
 
@@ -68,8 +66,9 @@ export default function ProfilePage() {
     }
   };
 
+  // Checkout products
   const handleCheckout = async (prodType) => {
-    if (!user) return setError("Trebuie să fii autentificat pentru a cumpăra.");
+    if (!user) return setError("Trebuie să fii autentificat.");
 
     if (
       (prodType === "analiza_cv" && user.subscriptie_cv === 1) ||
@@ -80,9 +79,7 @@ export default function ProfilePage() {
     }
 
     try {
-      const userString = localStorage.getItem("user");
-      if (!userString) return setError("Trebuie să fii autentificat.");
-      const localUser = JSON.parse(userString);
+      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
 
       const res = await fetch(
         "http://localhost:5000/api/stripe/create-checkout-session",
@@ -107,73 +104,66 @@ export default function ProfilePage() {
     }
   };
 
-  // Preluăm datele utilizatorului
+  // Fetch user profile
   useEffect(() => {
-    const userString = localStorage.getItem("user");
-    if (!userString) return setError("Nu ești autentificat.");
+    const fetchProfile = async () => {
+      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!localUser.token) return setError("Trebuie să fii autentificat.");
 
-    let localUser;
-    try {
-      localUser = JSON.parse(userString);
-    } catch {
-      return setError("Datele utilizatorului sunt corupte.");
-    }
-
-    const token = localUser.token;
-    if (!token)
-      return setError("Token-ul lipsește. Te rugăm să te autentifici din nou.");
-
-    fetch("http://localhost:5000/api/users/profil", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
+      try {
+        const res = await fetch("http://localhost:5000/api/users/profil", {
+          headers: { Authorization: `Bearer ${localUser.token}` },
+        });
         if (res.status === 401) return logoutAndRedirect();
-        const contentType = res.headers.get("Content-Type");
-        if (!res.ok) throw new Error(await res.text());
-        if (!contentType || !contentType.includes("application/json"))
-          throw new Error("Răspuns invalid de la server.");
-        return res.json();
-      })
-      .then((data) => {
-        if (data) {
-          setUser(data);
-          setError("");
-        }
-      })
-      .catch((err) => {
+        const data = await res.json();
+        setUser(data);
+      } catch (err) {
         console.error(err);
         setError(err.message);
-        setUser(null);
-      });
-  }, [navigate]);
+      }
+    };
+    fetchProfile();
+  }, []);
 
-  // Preluăm joburile favorite (doar dacă utilizatorul e Candidat)
+  // Fetch favorite jobs
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!user || user.role !== "Candidat") return;
-
-      const userString = localStorage.getItem("user");
-      if (!userString) return;
-
-      const localUser = JSON.parse(userString);
+      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
 
       try {
         const res = await fetch("http://localhost:5000/api/favorites/all", {
           headers: { Authorization: `Bearer ${localUser.token}` },
         });
-
         if (res.status === 401) return logoutAndRedirect();
-
-        const jobsData = await res.json();
-        console.log("Joburi favorite:", jobsData);
-        setFavoriteJobs(jobsData);
+        const jobs = await res.json();
+        setFavoriteJobs(jobs);
       } catch (err) {
         console.error("Eroare la preluarea joburilor favorite:", err);
       }
     };
-
     fetchFavorites();
   }, [user]);
+
+  // Delete favorite
+  const handleDeleteFavorite = async (jobId) => {
+    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+    try {
+      const res = await fetch("http://localhost:5000/api/favorites/remove", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localUser.token}`,
+        },
+        body: JSON.stringify({ ID_JOB: jobId }),
+      });
+      if (!res.ok) throw new Error("Eroare la ștergerea jobului favorite");
+      setFavoriteJobs((prev) => prev.filter((j) => j.ID_JOB !== jobId));
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
 
   if (error)
     return (
@@ -200,34 +190,14 @@ export default function ProfilePage() {
             </h2>
             <p className="text-gray-600">{user.email}</p>
             <p className="text-gray-600">{user.role}</p>
-
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-2 justify-center text-gray-700">
-                <Mail className="size-5 text-gray-400" />{" "}
-                <span className="text-sm">{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 justify-center text-gray-700">
-                <Phone className="size-5 text-gray-400" />{" "}
-                <span className="text-sm">+40 123 456 789</span>
-              </div>
-            </div>
-
-            {user.role === "Angajator" && (
-              <button className="mt-6 w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                Promovează anunțurile firmei
-              </button>
-            )}
           </div>
         </div>
 
-        {/* CV & Actions */}
+        {/* CV & Favorites */}
         <div className="lg:col-span-2 space-y-6">
+          {/* CV Upload */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">CV / Resume</h2>
-            </div>
-
-            {/* Upload / Preview */}
+            <h2 className="text-2xl font-bold mb-4">CV / Resume</h2>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4 bg-gray-50 flex justify-center items-center">
               {user.cv_url ? (
                 <iframe
@@ -283,7 +253,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Lista joburilor salvate */}
+          {/* Favorite Jobs */}
           {user.role === "Candidat" && favoriteJobs.length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">Joburi Salvate</h2>
@@ -292,14 +262,16 @@ export default function ProfilePage() {
                   <div
                     key={job.ID_JOB}
                     className="border rounded-lg p-4 hover:shadow-md transition-shadow flex items-start justify-between cursor-pointer"
-                    onClick={() => navigate(`/all/${job.ID_JOB}`)}
                   >
-                    <div className="flex-1">
+                    <div
+                      className="flex-1"
+                      onClick={() => navigate(`/all/${job.ID_JOB}`)}
+                    >
                       <h3 className="font-semibold text-gray-900 mb-1">
                         {job.TITLU}
                       </h3>
                       <div className="flex items-center gap-4 text-sm text-gray-600">
-                        {job.companie && (
+                        {job.DENUMIRE_COMPANIE && (
                           <div className="flex items-center gap-1">
                             <Briefcase className="size-4" />
                             <span>{job.DENUMIRE_COMPANIE}</span>
@@ -329,12 +301,15 @@ export default function ProfilePage() {
                     <div className="flex gap-2">
                       <button
                         className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/job/${job.ID_JOB}`);
-                        }}
+                        onClick={() => navigate(`/job/${job.ID_JOB}`)}
                       >
                         Vezi
+                      </button>
+                      <button
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1"
+                        onClick={() => handleDeleteFavorite(job.ID_JOB)}
+                      >
+                        <Trash2 className="size-4" /> Șterge
                       </button>
                     </div>
                   </div>

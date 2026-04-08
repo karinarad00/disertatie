@@ -6,6 +6,7 @@ import { Search, MapPin, Briefcase, DollarSign, Clock } from "lucide-react";
 const HomePage = () => {
   const [paidJobs, setPaidJobs] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [errorJobs, setErrorJobs] = useState(null);
 
   const [loadingPaidJobs, setLoadingPaidJobs] = useState(true);
   const [loadingJobs, setLoadingJobs] = useState(true);
@@ -35,7 +36,10 @@ const HomePage = () => {
         setPaidJobs(data);
         setLoadingPaidJobs(false);
       })
-      .catch(() => setLoadingPaidJobs(false));
+      .catch((err) => {
+        console.error(err);
+        setLoadingPaidJobs(false);
+      });
   }, []);
 
   // 🔥 Fetch filter options
@@ -46,32 +50,47 @@ const HomePage = () => {
         setCompanyOptions(data.companies);
         setExperienceOptions(data.experience);
         setDomainOptions(data.domains);
+      })
+      .catch((err) => {
+        console.error(err);
       });
   }, []);
 
   // 🔥 Fetch jobs
   const fetchJobs = async (page = 1) => {
     setLoadingJobs(true);
+    setErrorJobs(null);
 
-    const params = new URLSearchParams({
-      search: searchInput,
-      city: cityInput,
-      company: filterCompany,
-      experience: filterExperience,
-      domain: filterDomain,
-      period: filterPeriod,
-      page,
-      limit: jobsPerPage,
-    });
+    try {
+      const params = new URLSearchParams({
+        search: searchInput,
+        city: cityInput,
+        company: filterCompany,
+        experience: filterExperience,
+        domain: filterDomain,
+        period: filterPeriod,
+        page,
+        limit: jobsPerPage,
+      });
 
-    const res = await fetch(`http://localhost:5000/api/jobs/all?${params}`);
-    const data = await res.json();
+      const res = await fetch(`http://localhost:5000/api/jobs/all?${params}`);
 
-    setJobs(data.jobs);
-    setCurrentPage(page);
-    setTotalPages(Math.ceil(data.total / jobsPerPage));
+      if (!res.ok) {
+        throw new Error("Server error");
+      }
 
-    setLoadingJobs(false);
+      const data = await res.json();
+
+      setJobs(data.jobs);
+      setCurrentPage(page);
+      setTotalPages(Math.ceil(data.total / jobsPerPage));
+    } catch (err) {
+      console.error(err);
+      setErrorJobs("Serverul nu este disponibil momentan.");
+      setJobs([]); // optional: clear jobs
+    } finally {
+      setLoadingJobs(false);
+    }
   };
 
   // initial load
@@ -167,10 +186,23 @@ const HomePage = () => {
       {/* Slider */}
       <JobSlider loading={loadingPaidJobs} jobs={paidJobs} />
 
+      {/* Error Message */}
+      {errorJobs && (
+        <div className="text-center py-6">
+          <p className="text-red-500 font-semibold">⚠️ {errorJobs}</p>
+          <button
+            onClick={() => fetchJobs(1)}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Reîncearcă
+          </button>
+        </div>
+      )}
+
       {/* Jobs */}
       <h2 className="text-2xl font-semibold mt-6 mb-4">Joburi disponibile</h2>
 
-      <JobList loading={loadingJobs} jobs={jobs} />
+      {!errorJobs && <JobList loading={loadingJobs} jobs={jobs} />}
 
       {/* 🔢 Smart Pagination */}
       <div className="flex justify-center mt-6 gap-2 flex-wrap">

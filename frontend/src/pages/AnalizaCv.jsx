@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { FileText, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AnalizaCv = () => {
   const [token, setToken] = useState("");
@@ -8,6 +9,8 @@ const AnalizaCv = () => {
   const [recommendations, setRecommendations] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -71,6 +74,13 @@ const AnalizaCv = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <button
+          onClick={() => navigate("/profile")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        >
+          <ArrowLeft className="size-5" />
+          Înapoi la profil
+        </button>
         {/* LEFT: CV Preview */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Analiză CV</h1>

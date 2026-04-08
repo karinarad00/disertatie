@@ -46,6 +46,20 @@ def ask_llm(prompt: str):
     )
     return chat.choices[0].message.content
 
+#---------------- Job formatting ----------------
+def format_job_for_ui(job, idx):
+    # Map fields from your FAISS jobs to JobCard expected fields
+    return {
+        "ID_JOB": job.get("ID_JOB", idx + 1),
+        "TITLU": job.get("TITLU") or job.get("title") or f"Job #{idx+1}",
+        "DENUMIRE_COMPANIE": job.get("DENUMIRE_COMPANIE") or job.get("company") or "Companie",
+        "LOCATIE": job.get("LOCATIE") or job.get("location") or "România",
+        "SALARIU": job.get("SALARIU") or job.get("salary") or "",
+        "TIP_JOB": job.get("TIP_JOB") or job.get("type") or "",
+        "DESCRIERE": job.get("DESCRIERE") or job.get("description") or "Descriere lipsă",
+        "DATA_POSTARII": job.get("DATA_POSTARII") or None,
+        "LOGO": job.get("LOGO") or "https://via.placeholder.com/80",
+    }
 
 # ---------------- CV ANALYSIS ----------------
 @app.post("/analyze")
@@ -116,29 +130,24 @@ def job_suggestions(req: CVRequest):
         os.unlink(path)
         text = text[:4000]
 
-        top_jobs = search_jobs(text)
+        # --- FAISS search fără limită ---
+        top_jobs = search_jobs(text, top_k=20)
 
-        prompt = f"""
-Given this CV:
+        # --- Format for UI ---
+        formatted_jobs = [format_job_for_ui(job, idx) for idx, job in enumerate(top_jobs)]
 
-{text}
-
-And these jobs:
-
-{top_jobs}
-
-Explain briefly why each job matches the candidate.
-"""
-        explanation = ask_llm(prompt)
+        # --- Optional LLM explanation ---
+        explanation = "Sugestii generate automat"
 
         return {
-            "matched_jobs": top_jobs,
+            "jobs": formatted_jobs,
             "explanation": explanation
         }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ---------------- JOB-TO-CV MATCHING ----------------
 from pydantic import BaseModel
