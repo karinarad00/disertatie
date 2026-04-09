@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { logout, updateProfile } from "../redux/authSlice";
+
 import { ProfileCard } from "../components/ProfileCard";
 import { CVSection } from "../components/CVSection";
 import { FavoriteJobsList } from "../components/FavoriteJobsList";
@@ -8,16 +11,18 @@ import { EditProfileModal } from "../components/EditProfileModal";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const dispatch = useDispatch();
+
+  const { user } = useSelector((state) => state.auth);
+
   const [error, setError] = useState("");
   const [favoriteJobs, setFavoriteJobs] = useState([]);
   const [isCVModalOpen, setIsCVModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  // Logout function
+  // Logout
   const logoutAndRedirect = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+    dispatch(logout());
     navigate("/login");
   };
 
@@ -25,7 +30,6 @@ export default function ProfilePage() {
   const handleCheckout = async (prodType) => {
     if (!user) return navigate("/login");
 
-    // Already subscribed
     if (
       (prodType === "analiza_cv" && user.subscriptie_cv === 1) ||
       (prodType === "primeste_sugestii" && user.subscriptie_recomandari === 1)
@@ -35,16 +39,15 @@ export default function ProfilePage() {
     }
 
     try {
-      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
       const res = await fetch(
         "http://localhost:5000/api/stripe/create-checkout-session",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localUser.token}`,
+            Authorization: `Bearer ${user?.token}`,
           },
-          body: JSON.stringify({ userId: localUser.id, prodType }),
+          body: JSON.stringify({ userId: user.id, prodType }),
         },
       );
 
@@ -59,60 +62,70 @@ export default function ProfilePage() {
     }
   };
 
-  // Fetch user profile
+  // Fetch profile (sync Redux with backend)
   useEffect(() => {
     const fetchProfile = async () => {
-      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-      if (!localUser.token) return setError("Trebuie să fii autentificat.");
+      if (!user?.token) {
+        setError("Trebuie să fii autentificat.");
+        return;
+      }
 
       try {
         const res = await fetch("http://localhost:5000/api/users/profil", {
-          headers: { Authorization: `Bearer ${localUser.token}` },
+          headers: { Authorization: `Bearer ${user.token}` },
         });
+
         if (res.status === 401) return logoutAndRedirect();
+
         const data = await res.json();
-        setUser(data);
+
+        // 🔥 update Redux
+        dispatch(updateProfile(data));
       } catch (err) {
         console.error(err);
         setError(err.message);
       }
     };
+
     fetchProfile();
-  }, []);
+  }, [dispatch]);
 
   // Fetch favorite jobs
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!user || user.role !== "Candidat") return;
-      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
 
       try {
         const res = await fetch("http://localhost:5000/api/favorites/all", {
-          headers: { Authorization: `Bearer ${localUser.token}` },
+          headers: { Authorization: `Bearer ${user.token}` },
         });
+
         if (res.status === 401) return logoutAndRedirect();
+
         const jobs = await res.json();
         setFavoriteJobs(jobs);
       } catch (err) {
         console.error("Eroare la preluarea joburilor favorite:", err);
       }
     };
+
     fetchFavorites();
   }, [user]);
 
   // Delete favorite job
   const handleDeleteFavorite = async (jobId) => {
-    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
     try {
       const res = await fetch("http://localhost:5000/api/favorites/remove", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localUser.token}`,
+          Authorization: `Bearer ${user.token}`,
         },
         body: JSON.stringify({ ID_JOB: jobId }),
       });
+
       if (!res.ok) throw new Error("Eroare la ștergerea jobului favorite");
+
       setFavoriteJobs((prev) => prev.filter((j) => j.ID_JOB !== jobId));
     } catch (err) {
       console.error(err);
@@ -124,13 +137,13 @@ export default function ProfilePage() {
     return (
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
+
   if (!user)
     return <div className="italic text-center mt-4">Se încarcă...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile info card */}
         <ProfileCard
           user={user}
           favoriteJobsCount={favoriteJobs.length}
@@ -138,14 +151,12 @@ export default function ProfilePage() {
         />
 
         <div className="lg:col-span-2 space-y-6">
-          {/* CV Section */}
           <CVSection
             user={user}
             onCheckout={handleCheckout}
             openModal={() => setIsCVModalOpen(true)}
           />
 
-          {/* Favorites */}
           <FavoriteJobsList
             jobs={favoriteJobs}
             handleDelete={handleDeleteFavorite}
@@ -154,12 +165,10 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* Modals */}
       <ChangeCVModal
         isOpen={isCVModalOpen}
         onClose={() => setIsCVModalOpen(false)}
         user={user}
-        setUser={setUser}
         logoutAndRedirect={logoutAndRedirect}
         setError={setError}
       />
@@ -168,7 +177,7 @@ export default function ProfilePage() {
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         user={user}
-        onProfileUpdated={(updatedUser) => setUser(updatedUser)}
+        onProfileUpdated={(updatedUser) => dispatch(updateProfile(updatedUser))}
       />
     </div>
   );

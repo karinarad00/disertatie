@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -22,38 +22,145 @@ import CancelPage from "./pages/CancelPage";
 import AnalizaCv from "./pages/AnalizaCv";
 import Sugestii from "./pages/Sugestii";
 
-function App() {
-  const [user, setUser] = useState(null);
+const ProtectedRoute = ({ user, children }) => {
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) setUser(JSON.parse(savedUser));
-  }, []);
+function App() {
+  const user = useSelector((state) => state.auth.user);
 
   return (
     <Routes>
-      {/* Layout wraps all routes */}
       <Route element={<Layout user={user} />}>
-        <Route path="/login" element={<LoginPage setUser={setUser} />} />
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<RequestReset />} />
         <Route path="/change-password" element={<ChangePassword />} />
-        <Route path="/cerere-angajator" element={<CerereAngajator />} />
-        <Route path="/cerere/:id/aproba" element={<ApproveRequest />} />
-        <Route path="/cerere/:id/respinge" element={<RejectRequest />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/stats" element={<AdminPage />} />
-        <Route path="/company" element={<CompanyPage />} />
-        <Route path="/promote-job" element={<PromoteJob />} />
-        <Route path="/matching" element={<JobMatching />} />
-        <Route path="/candidate-match/:id" element={<CandidateMatch />} />
-        <Route path="/job/:id" element={<JobDetailsPage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/success" element={<SuccessPage />} />
-        <Route path="/cancel" element={<CancelPage />} />
-        <Route path="/analiza" element={<AnalizaCv />} />
-        <Route path="/sugestii" element={<Sugestii />} />
         <Route path="/" element={<HomePage />} />
+
+        {/* Protected routes */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute user={user}>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/company"
+          element={
+            <ProtectedRoute user={user}>
+              <CompanyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/promote-job"
+          element={
+            <ProtectedRoute user={user}>
+              <PromoteJob />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/matching"
+          element={
+            <ProtectedRoute user={user}>
+              <JobMatching />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/candidate-match/:id"
+          element={
+            <ProtectedRoute user={user}>
+              <CandidateMatch />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/job/:id"
+          element={
+            <ProtectedRoute user={user}>
+              <JobDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analiza"
+          element={
+            <ProtectedRoute user={user}>
+              <AnalizaCv />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sugestii"
+          element={
+            <ProtectedRoute user={user}>
+              <Sugestii />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stats"
+          element={
+            <ProtectedRoute user={user}>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cerere-angajator"
+          element={
+            <ProtectedRoute user={user}>
+              <CerereAngajator />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cerere/:id/aproba"
+          element={
+            <ProtectedRoute user={user}>
+              <ApproveRequest />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cerere/:id/respinge"
+          element={
+            <ProtectedRoute user={user}>
+              <RejectRequest />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/map"
+          element={
+            <ProtectedRoute user={user}>
+              <MapPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/success"
+          element={
+            <ProtectedRoute user={user}>
+              <SuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cancel"
+          element={
+            <ProtectedRoute user={user}>
+              <CancelPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
     </Routes>
   );

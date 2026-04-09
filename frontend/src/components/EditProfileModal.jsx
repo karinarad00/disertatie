@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { updateProfile } from "../redux/authSlice";
 import { X, Upload } from "lucide-react";
 
-export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
+export function EditProfileModal({ isOpen, onClose }) {
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -9,15 +14,17 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
     location: "",
     experience: "",
   });
+
   const [locationOptions, setLocationOptions] = useState([]);
   const [experienceOptions, setExperienceOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  // Initialize formData when modal opens or user changes
+  // Initialize formData
   useEffect(() => {
     if (!user) return;
+
     setFormData({
       username: user.username || "",
       email: user.email || "",
@@ -27,7 +34,7 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
     });
   }, [user]);
 
-  // Fetch dropdown options when modal opens
+  // Fetch filters
   useEffect(() => {
     if (!isOpen) return;
 
@@ -40,12 +47,13 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
       .catch((err) => console.error("Eroare la preluarea filtrelor:", err));
   }, [isOpen]);
 
-  // Generate preview URL when file changes
+  // Image preview
   useEffect(() => {
     if (!selectedFile) {
       setPreviewUrl("");
       return;
     }
+
     const url = URL.createObjectURL(selectedFile);
     setPreviewUrl(url);
 
@@ -55,12 +63,14 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0] || null;
-    setSelectedFile(file);
+    setSelectedFile(e.target.files[0] || null);
   };
 
   const handleSubmit = async (e) => {
@@ -68,9 +78,8 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
     setLoading(true);
 
     try {
-      const localUser = JSON.parse(localStorage.getItem("user"));
+      if (!user?.token) throw new Error("Nu ești autentificat");
 
-      // 1️⃣ Update profile info
       const payload = {
         username: formData.username,
         email: formData.email,
@@ -85,7 +94,7 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localUser.token}`,
+            Authorization: `Bearer ${user.token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -95,16 +104,20 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
       if (!resProfile.ok)
         throw new Error(dataProfile.message || "Eroare la actualizare");
 
-      let updatedUser = { ...dataProfile.user, token: localUser.token };
+      let updatedUser = {
+        ...user,
+        ...dataProfile.user,
+      };
 
-      // 2️⃣ Upload profile image if selected
       if (selectedFile) {
         const formDataImage = new FormData();
         formDataImage.append("profileImage", selectedFile);
 
         const resImage = await fetch("http://localhost:5000/api/image/upload", {
           method: "POST",
-          headers: { Authorization: `Bearer ${localUser.token}` },
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
           body: formDataImage,
         });
 
@@ -115,8 +128,7 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
         updatedUser.imagine_profil = dataImage.url;
       }
 
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      onProfileUpdated?.(updatedUser);
+      dispatch(updateProfile(updatedUser));
 
       alert("Profil actualizat!");
       onClose();
@@ -142,19 +154,21 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
           <p>Se salvează...</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Profile Image */}
+            {/* IMAGE */}
             <div className="flex flex-col items-center gap-2">
               <img
                 src={
                   previewUrl ||
-                  user.imagine_profil ||
+                  user?.imagine_profil ||
                   "https://via.placeholder.com/150"
                 }
                 alt="Preview"
                 className="w-24 h-24 object-cover rounded-full"
               />
-              <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700 transition-colors">
-                <Upload className="size-5" /> Schimbă imagine
+
+              <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700">
+                <Upload className="size-5" />
+                Schimbă imagine
                 <input
                   type="file"
                   accept="image/*"
@@ -164,37 +178,31 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
               </label>
             </div>
 
-            {/* Username */}
+            {/* INPUTS */}
             <input
               name="username"
-              placeholder="Username"
               value={formData.username}
               onChange={handleChange}
               className="w-full border p-2 rounded"
               required
             />
 
-            {/* Email */}
             <input
               name="email"
               type="email"
-              placeholder="Email"
               value={formData.email}
               onChange={handleChange}
               className="w-full border p-2 rounded"
               required
             />
 
-            {/* Phone */}
             <input
               name="phone"
-              placeholder="Telefon"
               value={formData.phone}
               onChange={handleChange}
               className="w-full border p-2 rounded"
             />
 
-            {/* Location */}
             <select
               name="location"
               value={formData.location}
@@ -209,7 +217,6 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
               ))}
             </select>
 
-            {/* Experience */}
             <select
               name="experience"
               value={formData.experience}
@@ -225,17 +232,10 @@ export function EditProfileModal({ isOpen, onClose, user, onProfileUpdated }) {
             </select>
 
             <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border rounded"
-              >
+              <button type="button" onClick={onClose}>
                 Anulează
               </button>
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
+              <button className="bg-blue-600 text-white px-4 py-2 rounded">
                 Salvează
               </button>
             </div>

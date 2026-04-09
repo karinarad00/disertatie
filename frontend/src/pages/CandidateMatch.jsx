@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
+import { useSelector } from "react-redux";
 import { ArrowLeft } from "lucide-react";
 
 export default function CandidateMatch() {
   const { id } = useParams(); // id-ul jobului
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   const [job, setJob] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -12,9 +14,6 @@ export default function CandidateMatch() {
   const [noApplications, setNoApplications] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return navigate("/login");
-
     if (!user.subscriptie_angajatori) {
       alert(
         "Trebuie să achiziționați Job Matching pentru a accesa această pagină.",

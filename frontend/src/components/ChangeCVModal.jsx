@@ -1,16 +1,19 @@
 import React, { useState } from "react";
 import { Upload } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { updateProfile, logout } from "../redux/authSlice";
 
 export function ChangeCVModal({
   isOpen,
   onClose,
-  user,
-  setUser,
   logoutAndRedirect,
   setError,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
 
   if (!isOpen) return null;
 
@@ -18,35 +21,34 @@ export function ChangeCVModal({
 
   const handleUploadClick = async () => {
     if (!selectedFile) return;
-    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!localUser.token) return setError("Trebuie să fii autentificat.");
+    if (!user?.token) return setError("Trebuie să fii autentificat.");
 
     const formData = new FormData();
     formData.append("cv", selectedFile);
 
     try {
       setUploading(true);
+
       const res = await fetch("http://localhost:5000/api/cv/upload", {
         method: "POST",
-        headers: { Authorization: `Bearer ${localUser.token}` },
+        headers: { Authorization: `Bearer ${user.token}` },
         body: formData,
       });
 
-      if (res.status === 401) return logoutAndRedirect();
+      if (res.status === 401) {
+        dispatch(logout());
+        return logoutAndRedirect();
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
 
-      setUser((prev) => {
-        const updatedUser = { ...prev, cv_url: data.url };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        return updatedUser;
-      });
+      dispatch(updateProfile({ cv_url: data.url }));
 
       setSelectedFile(null);
       setError("");
       alert("CV încărcat cu succes!");
-      onClose(); // close modal after upload
+      onClose();
     } catch (err) {
       setError("Eroare la încărcarea CV-ului: " + err.message);
     } finally {

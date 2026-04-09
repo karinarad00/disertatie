@@ -1,11 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const userFromStorage = localStorage.getItem("user")
-  ? JSON.parse(localStorage.getItem("user"))
-  : null;
-
 const initialState = {
-  user: userFromStorage,
+  user: null, // persisted by redux-persist
   loading: false,
   error: null,
 };
@@ -22,7 +18,6 @@ const authSlice = createSlice({
       state.loading = false;
       state.user = action.payload;
       state.error = null;
-      localStorage.setItem("user", JSON.stringify(action.payload));
     },
     loginFailure(state, action) {
       state.loading = false;
@@ -32,12 +27,10 @@ const authSlice = createSlice({
       state.user = null;
       state.error = null;
       state.loading = false;
-      localStorage.removeItem("user");
     },
     updateProfile(state, action) {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
-        localStorage.setItem("user", JSON.stringify(state.user));
       }
     },
   },

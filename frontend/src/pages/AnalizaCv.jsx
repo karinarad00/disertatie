@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const AnalizaCv = () => {
   const [token, setToken] = useState("");
@@ -27,13 +28,12 @@ const AnalizaCv = () => {
   });
 
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      setToken(parsed.token);
-      setCvUrl(parsed.cv_url);
+    if (user) {
+      setToken(user.token);
+      setCvUrl(user.cv_url);
     }
   }, []);
 

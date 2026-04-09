@@ -9,9 +9,8 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  // Handle logout
+  // Handle logout (Redux handles persistence via redux-persist)
   const handleLogout = () => {
-    localStorage.removeItem("user");
     dispatch(logout());
     navigate("/login");
   };
@@ -73,10 +72,10 @@ const Navbar = () => {
             <span>Hartă</span>
           </button>
 
-          {/* User buttons */}
+          {/* User section */}
           {user ? (
             <div className="flex items-center gap-2">
-              {/* Profile / Dashboard button */}
+              {/* Profile / Dashboard */}
               <button
                 onClick={handleProfileClick}
                 className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -91,7 +90,7 @@ const Navbar = () => {
                 {getUserIcon()}
               </button>
 
-              {/* Logout button */}
+              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

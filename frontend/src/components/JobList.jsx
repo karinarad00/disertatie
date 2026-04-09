@@ -1,25 +1,22 @@
 import JobCard from "./JobCard";
 import { useState, useEffect } from "react";
 import axios from "../axiosClient";
+import { useSelector } from "react-redux";
 
 const JobList = ({ jobs, loading = false }) => {
   const [favorites, setFavorites] = useState([]);
-  const [user, setUser] = useState(null);
+  const { user } = useSelector((state) => state.auth);
 
   // Preluăm userul și favoritele o singură dată
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) return;
+    if (!user) return;
 
-    const parsedUser = JSON.parse(storedUser);
-    setUser(parsedUser);
-
-    if (parsedUser.role === "Candidat") {
+    if (user.role === "Candidat") {
       const fetchFavorites = async () => {
         try {
           const res = await axios.get(
             "http://localhost:5000/api/favorites/list",
-            { headers: { Authorization: `Bearer ${parsedUser.token}` } },
+            { headers: { Authorization: `Bearer ${user.token}` } },
           );
           setFavorites(res.data); // array de ID_JOB
         } catch (err) {

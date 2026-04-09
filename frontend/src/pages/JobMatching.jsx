@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 import { ArrowLeft, Target, Calendar } from "lucide-react";
 
 export default function JobMatching() {
@@ -11,10 +12,9 @@ export default function JobMatching() {
 
   const PRICE = 40;
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return navigate("/login");
+  const { user } = useSelector((state) => state.auth);
 
+  useEffect(() => {
     // verificare plată
     setPaid(user.subscriptie_angajatori === 1);
 
@@ -30,8 +30,6 @@ export default function JobMatching() {
 
   const handlePayment = async () => {
     if (!selectedJob) return alert("Selectează un job!");
-
-    const user = JSON.parse(localStorage.getItem("user"));
 
     try {
       const res = await fetch(

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 import {
   ArrowLeft,
   TrendingUp,
@@ -10,38 +11,43 @@ import {
 
 export default function PromoteJob() {
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
 
   const MONTHLY_PRICE = 25;
 
- useEffect(() => {
-   const user = JSON.parse(localStorage.getItem("user"));
-   if (!user) return navigate("/login");
+  useEffect(() => {
 
-   // adăugăm ?promotable=1 pentru a primi doar joburile nepromovate
-   fetch(
-     `http://localhost:5000/api/jobs/by-company/${user.id_companie}?promotable=1`,
-   )
-     .then((res) => res.json())
-     .then((data) => {
-       setJobs(data);
-       if (data.length > 0) setSelectedJob(data[0].id);
-     })
-     .catch((err) => console.error(err));
- }, [navigate]);
+    fetch(
+      `http://localhost:5000/api/jobs/by-company/${user.id_companie}?promotable=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setJobs(data);
+        if (data.length > 0) setSelectedJob(data[0].id);
+      })
+      .catch((err) => console.error(err));
+  }, [user, navigate]);
 
   const handlePayment = async () => {
     if (!selectedJob) return alert("Selectează un job!");
-    const user = JSON.parse(localStorage.getItem("user"));
 
     try {
       const res = await fetch(
         "http://localhost:5000/api/stripe/create-checkout-session",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
           body: JSON.stringify({
             userId: user.id,
             prodType: "promovare_job",
@@ -114,7 +120,7 @@ export default function PromoteJob() {
               </div>
             </div>
 
-            {/* INFO SUBSCRIPTION */}
+            {/* INFO */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold text-blue-900 mb-2">
                 Informații abonament
@@ -143,7 +149,9 @@ export default function PromoteJob() {
 
                 <div className="flex justify-between text-sm">
                   <span>Preț</span>
-                  <span className="font-semibold">{MONTHLY_PRICE} RON/lună</span>
+                  <span className="font-semibold">
+                    {MONTHLY_PRICE} RON/lună
+                  </span>
                 </div>
 
                 <div className="border-t pt-3 mt-3 flex justify-between">

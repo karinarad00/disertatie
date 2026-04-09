@@ -9,12 +9,17 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../redux/authSlice";
 import { EditJobModal } from "../components/EditJobModal";
 import { CreateJobModal } from "../components/CreateJobModal";
 
 export default function CompanyProfile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const dispatch = useDispatch();
+
+  const { user } = useSelector((state) => state.auth);
+
   const [company, setCompany] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,8 +28,7 @@ export default function CompanyProfile() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const logoutAndRedirect = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+    dispatch(logout());
     navigate("/login");
   };
 
@@ -33,8 +37,15 @@ export default function CompanyProfile() {
     try {
       const resJobs = await fetch(
         `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
       );
-      if (!resJobs.ok) throw new Error("Eroare la preluarea joburilor");
+
+      if (resJobs.status === 401) return logoutAndRedirect();
+
       const jobsData = await resJobs.json();
       setJobs(jobsData);
     } catch (err) {
@@ -43,25 +54,23 @@ export default function CompanyProfile() {
   };
 
   useEffect(() => {
+    if (!user) return navigate("/login");
+
     async function fetchData() {
-      const userString = localStorage.getItem("user");
-      if (!userString) return navigate("/login");
-
-      let localUser;
-      try {
-        localUser = JSON.parse(userString);
-      } catch {
-        return navigate("/login");
-      }
-
-      setUser(localUser);
-
       try {
         setLoading(true);
+
         const resComp = await fetch(
-          `http://localhost:5000/api/companii/${localUser.id_companie}`,
+          `http://localhost:5000/api/companii/${user.id_companie}`,
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
+          },
         );
-        if (!resComp.ok) throw new Error("Eroare la preluarea companiei");
+
+        if (resComp.status === 401) return logoutAndRedirect();
+
         const compData = await resComp.json();
         setCompany(compData);
       } catch (err) {
@@ -72,9 +81,8 @@ export default function CompanyProfile() {
     }
 
     fetchData();
-  }, [navigate]);
+  }, [user, navigate]);
 
-  // Effect separat pentru joburi
   useEffect(() => {
     if (!user) return;
     fetchJobs();
@@ -86,7 +94,6 @@ export default function CompanyProfile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow p-4 mb-6">
         <h1 className="text-2xl font-bold">{company.denumire_companie}</h1>
       </header>
@@ -106,15 +113,18 @@ export default function CompanyProfile() {
               {company.denumire_companie}
             </h2>
             <p className="text-gray-600 mb-4">{company.descriere}</p>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 justify-center">
                 <Mail className="size-5" />
                 {company.email}
               </div>
+
               <div className="flex items-center gap-2 justify-center">
                 <Phone className="size-5" />
                 {company.telefon}
               </div>
+
               <div className="flex items-start gap-2 justify-center">
                 <MapPin className="size-5 mt-1" />
                 <div className="text-sm text-left">
@@ -125,6 +135,7 @@ export default function CompanyProfile() {
                     : "Fără locații"}
                 </div>
               </div>
+
               <div className="flex items-center gap-2 justify-center">
                 <Globe className="size-5" />
                 <a
@@ -140,77 +151,61 @@ export default function CompanyProfile() {
           </div>
         </div>
 
-        {/* Jobs & Actions */}
+        {/* Jobs */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick Actions */}
+          {/* Actions */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex flex-col items-center gap-3 p-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex flex-col items-center gap-3 p-6 bg-blue-600 text-white rounded-lg"
               >
                 <Plus className="size-8" />
-                <span className="font-semibold">Create New Job</span>
+                <span>Create New Job</span>
               </button>
 
               <button
                 onClick={() => navigate("/promote-job")}
-                className="flex flex-col items-center gap-3 p-6 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="flex flex-col items-center gap-3 p-6 bg-purple-600 text-white rounded-lg"
               >
                 <TrendingUp className="size-8" />
-                <span className="font-semibold">Promote a Job</span>
+                <span>Promote a Job</span>
               </button>
 
               <button
                 onClick={() => navigate("/matching")}
-                className="flex flex-col items-center gap-3 p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex flex-col items-center gap-3 p-6 bg-green-600 text-white rounded-lg"
               >
                 <Users className="size-8" />
-                <span className="font-semibold">Get Candidate Match</span>
+                <span>Get Candidate Match</span>
               </button>
             </div>
           </div>
 
-          {/* Active Jobs */}
+          {/* Jobs List */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold mb-4">Active Job Postings</h2>
+
             <div className="space-y-4">
               {jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">
-                        {job.title}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Users className="size-4" />
-                          <span>{job.applicants || 0} applicants</span>
-                        </div>
-                        <span>Posted {job.posted || "N/A"}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
-                        onClick={() => {
-                          setCurrentJob(job);
-                          setEditModalOpen(true);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => navigate(`/job/${job.id}`)}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                      >
-                        View
-                      </button>
-                    </div>
+                <div key={job.id} className="border p-4 rounded-lg">
+                  <h3 className="font-semibold">{job.title}</h3>
+
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        setCurrentJob(job);
+                        setEditModalOpen(true);
+                      }}
+                    >
+                      Edit
+                    </button>
+
+                    <button onClick={() => navigate(`/job/${job.id}`)}>
+                      View
+                    </button>
                   </div>
                 </div>
               ))}
@@ -226,6 +221,7 @@ export default function CompanyProfile() {
         onClose={() => setIsModalOpen(false)}
         onJobCreated={fetchJobs}
       />
+
       <EditJobModal
         isOpen={editModalOpen}
         jobId={currentJob?.id}

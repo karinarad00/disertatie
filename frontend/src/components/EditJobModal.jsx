@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { useSelector } from "react-redux";
 
 export function EditJobModal({ jobId, isOpen, onClose, onJobUpdated }) {
   const [formData, setFormData] = useState({
@@ -14,7 +15,8 @@ export function EditJobModal({ jobId, isOpen, onClose, onJobUpdated }) {
   });
   const [domenii, setDomenii] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const { user } = useSelector((state) => state.auth);
+
   // Preluăm domeniile la mount
   useEffect(() => {
     async function fetchDomenii() {
@@ -85,7 +87,7 @@ export function EditJobModal({ jobId, isOpen, onClose, onJobUpdated }) {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token}`,
+            Authorization: `Bearer ${user.token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -103,7 +105,7 @@ export function EditJobModal({ jobId, isOpen, onClose, onJobUpdated }) {
       alert(err.message);
     }
   };
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl w-full max-w-lg p-6">

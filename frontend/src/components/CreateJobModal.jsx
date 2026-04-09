@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { X } from "lucide-react";
 
 export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
+  const { user } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({
     titlu: "",
     tipJob: "",
@@ -16,7 +19,7 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
 
   const [domenii, setDomenii] = useState([]);
 
-  // Preluăm domeniile din backend la mount
+  // Fetch domenii
   useEffect(() => {
     async function fetchDomenii() {
       try {
@@ -33,7 +36,10 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -51,7 +57,7 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -59,10 +65,9 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la crearea jobului");
 
-      onJobCreated?.(); 
-
+      onJobCreated?.();
       alert("Job creat!");
-      onClose(); 
+      onClose();
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -80,7 +85,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Titlu */}
           <input
             name="titlu"
             placeholder="Titlu job"
@@ -90,7 +94,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             className="w-full border p-2 rounded"
           />
 
-          {/* Tip Job */}
           <select
             name="tipJob"
             value={formData.tipJob}
@@ -105,7 +108,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             <option value="Internship">Internship</option>
           </select>
 
-          {/* Nivel experiență */}
           <select
             name="nivelExperienta"
             value={formData.nivelExperienta}
@@ -121,7 +123,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             <option value="Senior">Senior</option>
           </select>
 
-          {/* Domeniu */}
           <select
             name="idDomeniu"
             value={formData.idDomeniu}
@@ -137,7 +138,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             ))}
           </select>
 
-          {/* Link site cariere */}
           <input
             type="text"
             name="linkCariera"
@@ -147,7 +147,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             className="w-full border p-2 rounded"
           />
 
-          {/* Salarii */}
           <div className="flex gap-2">
             <input
               type="number"
@@ -167,7 +166,6 @@ export function CreateJobModal({ isOpen, idCompanie, onClose, onJobCreated }) {
             />
           </div>
 
-          {/* Descriere */}
           <textarea
             name="descriere"
             placeholder="Descriere job"

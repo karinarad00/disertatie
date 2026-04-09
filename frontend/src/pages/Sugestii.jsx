@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import JobCard from "../components/JobCard";
 import { ArrowLeft, Sparkles, TrendingUp, Target } from "lucide-react";
 
@@ -14,14 +15,13 @@ const Sugestii = () => {
   const jobsPerPage = 3;
 
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   // Load user
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      setToken(parsed.token);
-      setCvUrl(parsed.cv_url);
+    if (user) {
+      setToken(user.token);
+      setCvUrl(user.cv_url);
     } else {
       setLoading(false);
       setError("Nu ești autentificat.");

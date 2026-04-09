@@ -1,3 +1,4 @@
+// authThunks.js
 import { loginStart, loginSuccess, loginFailure } from "./authSlice";
 
 export const loginUser = (email, password) => async (dispatch) => {
@@ -6,10 +7,8 @@ export const loginUser = (email, password) => async (dispatch) => {
   try {
     const response = await fetch("http://localhost:5000/api/users/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }), 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
     if (!response.ok) {
@@ -18,7 +17,7 @@ export const loginUser = (email, password) => async (dispatch) => {
     }
 
     const userData = await response.json();
-    localStorage.setItem("user", JSON.stringify(userData));
+
     dispatch(loginSuccess(userData));
   } catch (error) {
     dispatch(loginFailure(error.message));

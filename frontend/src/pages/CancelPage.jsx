@@ -1,12 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const CancelPage = () => {
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   const handleGoBack = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-
     if (!user || !user.role) {
       navigate("/profile");
       return;
