@@ -22,6 +22,7 @@ const authSlice = createSlice({
       state.loading = false;
       state.user = action.payload;
       state.error = null;
+      localStorage.setItem("user", JSON.stringify(action.payload));
     },
     loginFailure(state, action) {
       state.loading = false;
@@ -31,10 +32,18 @@ const authSlice = createSlice({
       state.user = null;
       state.error = null;
       state.loading = false;
+      localStorage.removeItem("user");
+    },
+    updateProfile(state, action) {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem("user", JSON.stringify(state.user));
+      }
     },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout } =
+export const { loginStart, loginSuccess, loginFailure, logout, updateProfile } =
   authSlice.actions;
+
 export default authSlice.reducer;

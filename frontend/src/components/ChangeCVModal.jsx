@@ -1,83 +1,95 @@
 import React, { useState } from "react";
-import { X, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 
-export function ChangeCVModal({ isOpen, onClose, onUpload }) {
+export function ChangeCVModal({
+  isOpen,
+  onClose,
+  user,
+  setUser,
+  logoutAndRedirect,
+  setError,
+}) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0] || null);
-    setError("");
-  };
+  const handleFileChange = (e) => setSelectedFile(e.target.files[0] || null);
 
   const handleUploadClick = async () => {
-    if (!selectedFile) {
-      setError("Te rog selectează un fișier.");
-      return;
-    }
+    if (!selectedFile) return;
+    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!localUser.token) return setError("Trebuie să fii autentificat.");
+
+    const formData = new FormData();
+    formData.append("cv", selectedFile);
 
     try {
       setUploading(true);
-      if (onUpload) {
-        await onUpload(selectedFile);
-      }
+      const res = await fetch("http://localhost:5000/api/cv/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localUser.token}` },
+        body: formData,
+      });
+
+      if (res.status === 401) return logoutAndRedirect();
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
+
+      setUser((prev) => {
+        const updatedUser = { ...prev, cv_url: data.url };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+
       setSelectedFile(null);
-      onClose();
+      setError("");
+      alert("CV încărcat cu succes!");
+      onClose(); // close modal after upload
     } catch (err) {
-      setError("Eroare la încărcare: " + err.message);
+      setError("Eroare la încărcarea CV-ului: " + err.message);
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
-        {/* Close button */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-96 p-6 space-y-6 transform transition-all scale-95 animate-scaleIn">
+        <h3 className="text-2xl font-bold text-gray-900 text-center">
+          Încarcă / Actualizează CV
+        </h3>
+
+        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors">
+          <Upload className="size-8 text-gray-400 mb-2" />
+          <span className="text-gray-500 text-center">
+            {selectedFile
+              ? selectedFile.name
+              : "Trage CV-ul aici sau selectează fișierul"}
+          </span>
+          <input type="file" onChange={handleFileChange} className="hidden" />
+        </label>
+
+        {selectedFile && (
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className={`w-full px-4 py-3 rounded-lg font-semibold text-white transition-colors ${
+              uploading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {uploading ? "Se încarcă..." : "Confirmă"}
+          </button>
+        )}
+
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition"
+          className="w-full px-4 py-3 mt-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors font-medium"
         >
-          <X className="size-6" />
-        </button>
-
-        <h2 className="text-xl font-bold mb-4">Schimbă CV-ul</h2>
-
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4 text-center bg-gray-50">
-          {selectedFile ? (
-            <div>
-              <p className="text-gray-700 font-medium">{selectedFile.name}</p>
-              <p className="text-gray-500 text-sm">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          ) : (
-            <p className="text-gray-500">
-              Trage fișierul aici sau apasă pentru a selecta
-            </p>
-          )}
-          <label className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition">
-            <Upload className="size-5 mr-2" />
-            Alege fișier
-            <input type="file" className="hidden" onChange={handleFileChange} />
-          </label>
-        </div>
-
-        {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-
-        <button
-          onClick={handleUploadClick}
-          disabled={uploading || !selectedFile}
-          className={`w-full py-2 rounded-lg text-white font-semibold transition ${
-            selectedFile
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {uploading ? "Se încarcă..." : "Încarcă CV"}
+          Închide
         </button>
       </div>
     </div>

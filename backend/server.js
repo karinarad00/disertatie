@@ -12,6 +12,7 @@ const cvRoute = require("./routes/cvRoute");
 const stripePaymentRoute = require("./routes/stripePayment");
 const aplicariRoutes = require("./routes/aplicariRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
+const profileImgRoutes = require("./routes/profileImgRoutes");
 
 const app = express();
 const port = 5000;
@@ -44,6 +45,7 @@ app.use("/api/cv", cvRoute);
 app.use("/api/stripe", stripePaymentRoute);
 app.use("/api/aplicari", aplicariRoutes);
 app.use("/api/favorites", favoriteRoutes);
+app.use("/api/image", profileImgRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
