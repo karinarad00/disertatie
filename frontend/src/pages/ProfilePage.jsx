@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import ImageWithFallback from "../components/ImageWithFallback";
 import { ChangeCVModal } from "../components/ChangeCVModal";
+import { EditProfileModal } from "../components/EditProfileModal";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [favoriteJobs, setFavoriteJobs] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const logoutAndRedirect = () => {
     localStorage.removeItem("user");
@@ -71,7 +73,7 @@ export default function ProfilePage() {
 
   // Checkout products
   const handleCheckout = async (prodType) => {
-    if (!user) return setError("Trebuie să fii autentificat.");
+    if (!user) return navigate("/login");
 
     if (
       (prodType === "analiza_cv" && user.subscriptie_cv === 1) ||
@@ -133,7 +135,6 @@ export default function ProfilePage() {
     const fetchFavorites = async () => {
       if (!user || user.role !== "Candidat") return;
       const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-
       try {
         const res = await fetch("http://localhost:5000/api/favorites/all", {
           headers: { Authorization: `Bearer ${localUser.token}` },
@@ -213,7 +214,7 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3 text-gray-700">
                     <Briefcase className="size-5 text-gray-400" />
                     <span className="text-sm">
-                      {user.experience} years experience
+                      {user.experience} experience
                     </span>
                   </div>
                 )}
@@ -221,15 +222,15 @@ export default function ProfilePage() {
 
               <button
                 className="w-full mt-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                onClick={() => alert("Edit profile")}
+                onClick={() => setIsEditOpen(true)}
               >
-                Edit Profile
+                Editează Profil
               </button>
             </div>
 
             {/* Quick Stats */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Profile Views</span>
@@ -261,9 +262,6 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-bold text-gray-900">
                   My CV / Resume
                 </h2>
-                <span className="text-sm text-gray-500">
-                  Last updated: {user.cv_updated_at || "N/A"}
-                </span>
               </div>
 
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 bg-gray-50 flex flex-col items-center justify-center">
@@ -322,50 +320,6 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
-
-            {/* Skills Section */}
-            {user.skills && user.skills.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Skills</h3>
-                <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Experience Section */}
-            {user.experience_details && user.experience_details.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">
-                  Work Experience
-                </h3>
-                <div className="space-y-4">
-                  {user.experience_details.map((exp, idx) => (
-                    <div
-                      key={idx}
-                      className={`border-l-4 pl-4 ${idx === 0 ? "border-blue-600" : "border-gray-300"}`}
-                    >
-                      <h4 className="font-semibold text-gray-900">
-                        {exp.title}
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        {exp.company} • {exp.period}
-                      </p>
-                      <p className="text-gray-700 mt-2 text-sm">
-                        {exp.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Favorite Jobs */}
             {favoriteJobs.length > 0 && (
@@ -438,6 +392,13 @@ export default function ProfilePage() {
       <ChangeCVModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <EditProfileModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        user={user}
+        onProfileUpdated={(updatedUser) => setUser(updatedUser)}
       />
     </div>
   );

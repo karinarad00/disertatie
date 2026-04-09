@@ -188,10 +188,23 @@ router.get("/profil", authenticateToken, async (req, res) => {
 
   try {
     const result = await executeQuery(
-      `SELECT id_utilizator, username, email, tip_utilizator, imagine_profil, cv_url,
-              subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori
-       FROM Utilizator
-       WHERE id_utilizator = :id`,
+      `SELECT 
+          u.id_utilizator,
+          u.username,
+          u.email,
+          u.phone,
+          u.experience,
+          u.tip_utilizator,
+          u.imagine_profil,
+          u.cv_url,
+          u.subscriptie_cv,
+          u.subscriptie_recomandari,
+          u.subscriptie_angajatori,
+          o.id_oras AS location_id,
+          o.denumire_oras AS location
+       FROM Utilizator u
+       LEFT JOIN Oras o ON u.location = o.id_oras
+       WHERE u.id_utilizator = :id`,
       { id: userId },
     );
 
@@ -200,11 +213,15 @@ router.get("/profil", authenticateToken, async (req, res) => {
     }
 
     const user = result[0];
-
+    
     res.json({
       id: user.ID_UTILIZATOR,
       username: user.USERNAME,
       email: user.EMAIL,
+      phone: user.PHONE,
+      experience: user.EXPERIENCE,
+      location: user.LOCATION,
+      location_id: user.LOCATION_ID,
       role: user.TIP_UTILIZATOR,
       imagine_profil: user.IMAGINE_PROFIL,
       cv_url: user.CV_URL,
@@ -214,6 +231,117 @@ router.get("/profil", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// ================= UPDATE PROFILE =================
+router.put("/update-profile", authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { username, email, phone, location, experience } = req.body;
+
+  try {
+    if (username || email) {
+      const existing = await executeQuery(
+        `SELECT COUNT(*) AS COUNT 
+         FROM Utilizator 
+         WHERE (username = :username OR email = :email) 
+         AND id_utilizator != :id`,
+        { username, email, id: userId },
+      );
+
+      if (existing[0].COUNT > 0) {
+        return res.status(400).json({
+          message: "Username-ul sau email-ul este deja folosit.",
+        });
+      }
+    }
+
+    const updates = [];
+    const params = { id: userId };
+
+    if (username !== undefined) {
+      updates.push("username = :username");
+      params.username = username;
+    }
+
+    if (email !== undefined) {
+      updates.push("email = :email");
+      params.email = email;
+    }
+
+    if (phone !== undefined) {
+      updates.push("phone = :phone");
+      params.phone = phone;
+    }
+
+    if (location !== undefined) {
+      updates.push("location = :location");
+      params.location = location;
+    }
+
+    if (experience !== undefined) {
+      updates.push("experience = :experience");
+      params.experience = experience;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        message: "Nicio modificare de actualizat.",
+      });
+    }
+
+    const sql = `
+      UPDATE Utilizator 
+      SET ${updates.join(", ")} 
+      WHERE id_utilizator = :id
+    `;
+
+    await executeQuery(sql, params, { autoCommit: true });
+
+    const result = await executeQuery(
+      `SELECT 
+      u.id_utilizator,
+      u.username,
+      u.email,
+      u.phone,
+      u.experience,
+      u.tip_utilizator,
+      u.imagine_profil,
+      u.cv_url,
+      u.subscriptie_cv,
+      u.subscriptie_recomandari,
+      u.subscriptie_angajatori,
+      o.id_oras AS location_id,
+      o.denumire_oras AS location
+   FROM Utilizator u
+   LEFT JOIN Oras o ON u.location = o.id_oras
+   WHERE u.id_utilizator = :id`,
+      { id: userId },
+    );
+
+    const updatedUser = result[0];
+
+    res.json({
+      message: "Profil actualizat cu succes.",
+      user: {
+        id: updatedUser.ID_UTILIZATOR,
+        username: updatedUser.USERNAME,
+        email: updatedUser.EMAIL,
+        phone: updatedUser.PHONE,
+        experience: updatedUser.EXPERIENCE,
+        location: updatedUser.LOCATION,
+        location_id: updatedUser.LOCATION_ID,
+        role: updatedUser.TIP_UTILIZATOR,
+        imagine_profil: updatedUser.IMAGINE_PROFIL,
+        cv_url: updatedUser.CV_URL,
+        subscriptie_cv: updatedUser.SUBSCRIPTIE_CV,
+        subscriptie_recomandari: updatedUser.SUBSCRIPTIE_RECOMANDARI,
+        subscriptie_angajatori: updatedUser.SUBSCRIPTIE_ANGAJATORI,
+      },
+    });
+  } catch (err) {
+    console.error("Eroare update-profile:", err);
     res.status(500).json({ message: "Eroare server." });
   }
 });

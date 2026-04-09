@@ -139,27 +139,35 @@ router.get("/all", async (req, res) => {
   }
 });
 
-// Ruta pentru a prelua opțiunile unice pentru filtre (companii, domenii, experiență)
+// Ruta pentru a prelua opțiunile unice pentru filtre (companii, domenii, experiență, locații)
 router.get("/filters", async (req, res) => {
   try {
-    const companies = await executeQuery(`
-      SELECT DISTINCT denumire_companie FROM companie
-    `);
+    const companies = await executeQuery(
+      `SELECT DISTINCT denumire_companie FROM Companie`
+    );
+    const domains = await executeQuery(
+      `SELECT DISTINCT denumire_domeniu FROM Domeniu`
+    );
+    const experience = await executeQuery(
+      `SELECT DISTINCT nivel_experienta FROM Job`
+    );
 
-    const domains = await executeQuery(`
-      SELECT DISTINCT denumire_domeniu FROM domeniu
-    `);
-
-    const experience = await executeQuery(`
-      SELECT DISTINCT nivel_experienta FROM job
+    // Orașe disponibile pentru joburi – acum cu ID
+    const locations = await executeQuery(`
+      SELECT DISTINCT o.id_oras, o.denumire_oras
+      FROM Job j
+      JOIN CentruCompanie cc ON j.id_companie = cc.id_companie
+      JOIN Oras o ON cc.id_oras = o.id_oras
     `);
 
     res.json({
       companies: companies.map((c) => c.DENUMIRE_COMPANIE),
       domains: domains.map((d) => d.DENUMIRE_DOMENIU),
       experience: experience.map((e) => e.NIVEL_EXPERIENTA),
+      locations: locations.map((l) => ({ id_oras: l.ID_ORAS, denumire_oras: l.DENUMIRE_ORAS })),
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Eroare la filtre" });
   }
 });

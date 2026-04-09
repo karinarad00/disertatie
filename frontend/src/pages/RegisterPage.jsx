@@ -1,16 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, Phone } from "lucide-react";
 
 const RegisterPage = () => {
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
+    phone: "",
+    location: "", // id_oras
+    experience: "",
   });
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [experienceOptions, setExperienceOptions] = useState([]);
   const navigate = useNavigate();
+
+  // Fetch locații și experiență pentru dropdown
+  useEffect(() => {
+    fetch("http://localhost:5000/api/jobs/filters")
+      .then((res) => res.json())
+      .then((data) => {
+        setLocationOptions(data.locations || []); // [{id_oras, denumire_oras}]
+        setExperienceOptions(data.experience || []); // ['Intern', 'Junior', ...]
+      })
+      .catch((err) => console.error("Eroare la preluarea filtrelor:", err));
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,10 +39,16 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
+      const payload = {
+        ...form,
+        tip_utilizator: "Candidat",
+        location: form.location ? Number(form.location) : null, // trimitem id_oras numeric
+      };
+
       const response = await fetch("http://localhost:5000/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, tip_utilizator: "Candidat" }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -114,6 +137,67 @@ const RegisterPage = () => {
                 disabled={loading}
               />
             </div>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Telefon (opțional)
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+              <input
+                type="text"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                placeholder="Telefon"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {/* Location Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Locație (opțional)
+            </label>
+            <select
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+              disabled={loading}
+            >
+              <option value="">Selectează locația</option>
+              {locationOptions.map((loc) => (
+                <option key={loc.id_oras} value={loc.id_oras}>
+                  {loc.denumire_oras}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Experience Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Experiență (opțional)
+            </label>
+            <select
+              name="experience"
+              value={form.experience}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+              disabled={loading}
+            >
+              <option value="">Selectează experiența</option>
+              {experienceOptions.map((exp) => (
+                <option key={exp} value={exp}>
+                  {exp}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
