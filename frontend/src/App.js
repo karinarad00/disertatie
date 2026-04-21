@@ -1,5 +1,9 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { logout } from "./redux/authSlice";
+import { setAxiosLogoutHandler } from "./axiosClient";
+
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -29,6 +33,22 @@ const ProtectedRoute = ({ user, children }) => {
 
 function App() {
   const user = useSelector((state) => state.auth.user);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setAxiosLogoutHandler(() => {
+      dispatch(logout());
+
+      // prevent unnecessary redirects
+      if (window.location.pathname !== "/login") {
+        navigate("/login", { replace: true });
+      }
+    });
+
+    // cleanup to avoid stale handlers
+    return () => setAxiosLogoutHandler(null);
+  }, [dispatch, navigate]);
 
   return (
     <Routes>

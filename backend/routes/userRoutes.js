@@ -7,13 +7,7 @@ const jwt = require("jsonwebtoken");
 const authenticateToken = require("../middleware/authMiddleware");
 require("dotenv").config();
 
-const {
-  sendResetEmail,
-  sendEmployerRequestEmail,
-  sendAdminNotificationEmail,
-  sendEmployerDecisionEmail,
-  sendSetPasswordEmail,
-} = require("../mailer");
+const { sendResetEmail } = require("../mailer");
 
 // ================= REGISTER =================
 router.post("/register", async (req, res) => {
@@ -57,7 +51,11 @@ router.post("/login", async (req, res) => {
 
   try {
     const result = await executeQuery(
-      `SELECT id_utilizator, username, email, parola, tip_utilizator, imagine_profil, cv_url, id_companie, subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori
+      `SELECT 
+        id_utilizator, username, email, parola, tip_utilizator,
+        imagine_profil, cv_url, id_companie,
+        subscriptie_cv, subscriptie_recomandari, subscriptie_angajatori,
+        phone, experience, location
        FROM Utilizator
        WHERE email = :email`,
       { email },
@@ -97,6 +95,9 @@ router.post("/login", async (req, res) => {
       subscriptie_cv: user.SUBSCRIPTIE_CV,
       subscriptie_recomandari: user.SUBSCRIPTIE_RECOMANDARI,
       subscriptie_angajatori: user.SUBSCRIPTIE_ANGAJATORI,
+      phone: user.PHONE,
+      experience: user.EXPERIENCE,
+      location: user.LOCATION,
     });
   } catch (error) {
     console.error("Eroare login:", error);
@@ -213,7 +214,7 @@ router.get("/profil", authenticateToken, async (req, res) => {
     }
 
     const user = result[0];
-    
+
     res.json({
       id: user.ID_UTILIZATOR,
       username: user.USERNAME,
@@ -238,7 +239,8 @@ router.get("/profil", authenticateToken, async (req, res) => {
 // ================= UPDATE PROFILE =================
 router.put("/update-profile", authenticateToken, async (req, res) => {
   const userId = req.user.id;
-  const { username, email, phone, location, experience } = req.body;
+  const { username, email, phone, location, experience, imagine_profil } =
+    req.body;
 
   try {
     if (username || email) {
@@ -283,6 +285,11 @@ router.put("/update-profile", authenticateToken, async (req, res) => {
     if (experience !== undefined) {
       updates.push("experience = :experience");
       params.experience = experience;
+    }
+
+    if (imagine_profil !== undefined) {
+      updates.push("imagine_profil = :imagine_profil");
+      params.imagine_profil = imagine_profil;
     }
 
     if (updates.length === 0) {

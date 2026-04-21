@@ -7,7 +7,6 @@ const JobList = ({ jobs, loading = false }) => {
   const [favorites, setFavorites] = useState([]);
   const { user } = useSelector((state) => state.auth);
 
-  // Preluăm userul și favoritele o singură dată
   useEffect(() => {
     if (!user) return;
 
@@ -18,14 +17,17 @@ const JobList = ({ jobs, loading = false }) => {
             "http://localhost:5000/api/favorites/list",
             { headers: { Authorization: `Bearer ${user.token}` } },
           );
-          setFavorites(res.data); // array de ID_JOB
+
+          setFavorites(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
           console.error("Eroare la preluarea favorite:", err);
+          setFavorites([]);
         }
       };
+
       fetchFavorites();
     }
-  }, []);
+  }, [user]);
 
   if (loading) {
     return (
@@ -55,7 +57,9 @@ const JobList = ({ jobs, loading = false }) => {
         <li key={job.ID_JOB}>
           <JobCard
             job={job}
-            isFavorite={favorites.includes(job.ID_JOB)}
+            isFavorite={
+              Array.isArray(favorites) && favorites.includes(job.ID_JOB)
+            }
             user={user}
             setFavorites={setFavorites}
           />

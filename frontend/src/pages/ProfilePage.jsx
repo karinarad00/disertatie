@@ -79,7 +79,6 @@ export default function ProfilePage() {
 
         const data = await res.json();
 
-        // 🔥 update Redux
         dispatch(updateProfile(data));
       } catch (err) {
         console.error(err);

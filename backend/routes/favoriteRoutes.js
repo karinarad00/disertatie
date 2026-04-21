@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { executeQuery } = require("../db");
 const authenticateToken = require("../middleware/authMiddleware");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 const oracledb = require("oracledb");
 
 // Adaugă un job în lista de favorite
@@ -60,7 +61,7 @@ router.delete("/remove", authenticateToken, async (req, res) => {
 });
 
 // Preia lista de favorite a utilizatorului
-router.get("/list", authenticateToken, async (req, res) => {
+router.get("/list",authenticateToken, cacheMiddleware, async (req, res) => {
   const ID_UTILIZATOR = req.user.id;
 
   try {

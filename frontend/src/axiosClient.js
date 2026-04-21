@@ -5,6 +5,7 @@ const axiosClient = axios.create({
 });
 
 let logoutHandler = null;
+
 export const setAxiosLogoutHandler = (handler) => {
   logoutHandler = handler;
 };
@@ -14,8 +15,15 @@ axiosClient.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
 
+    // 🔥 Only act if we actually have a response from server
     if ((status === 401 || status === 403) && logoutHandler) {
-      logoutHandler(); 
+      console.warn("Auth error detected → logging out");
+
+      // Prevent multiple triggers (important!)
+      const handler = logoutHandler;
+      logoutHandler = null;
+
+      handler();
     }
 
     return Promise.reject(error);
