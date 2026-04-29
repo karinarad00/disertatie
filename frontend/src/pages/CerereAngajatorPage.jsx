@@ -15,6 +15,9 @@ const CerereAngajatorPage = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const truncate = (text, max = 30) =>
+    text && text.length > max ? text.slice(0, max) + "..." : text;
+
   useEffect(() => {
     fetch("http://localhost:5000/api/companii/all")
       .then((res) => res.json())
@@ -85,7 +88,9 @@ const CerereAngajatorPage = () => {
 
         {message && (
           <p
-            className={`mb-4 text-center text-sm ${message.startsWith("Eroare") ? "text-red-500" : "text-green-600"}`}
+            className={`mb-4 text-center text-sm ${
+              message.startsWith("Eroare") ? "text-red-500" : "text-green-600"
+            }`}
           >
             {message}
           </p>
@@ -110,7 +115,7 @@ const CerereAngajatorPage = () => {
                 <option value="">Selectează compania</option>
                 {companii.map((comp) => (
                   <option key={comp.ID_COMPANIE} value={comp.ID_COMPANIE}>
-                    {comp.DENUMIRE_COMPANIE}
+                    {truncate(comp.DENUMIRE_COMPANIE)}
                   </option>
                 ))}
               </select>

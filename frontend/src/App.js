@@ -10,7 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import RequestReset from "./pages/RequestResetPage";
 import ChangePassword from "./pages/ChangePasswordPage";
-import CerereAngajator from "./pages/CerereAngajatorPage";
+import CerereAngajatorPage from "./pages/CerereAngajatorPage";
 import ApproveRequest from "./pages/ApproveRequest";
 import RejectRequest from "./pages/RejectRequest";
 import ProfilePage from "./pages/ProfilePage";
@@ -56,6 +56,7 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/cerere-angajator" element={<CerereAngajatorPage />} />
         <Route path="/reset-password" element={<RequestReset />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/" element={<HomePage />} />
@@ -133,14 +134,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/cerere-angajator"
-          element={
-            <ProtectedRoute user={user}>
-              <CerereAngajator />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/cerere/:id/aproba"
           element={

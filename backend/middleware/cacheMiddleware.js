@@ -2,9 +2,10 @@ const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 3600 });
 
 const cacheMiddleware = (req, res, next) => {
-  if (req.method !== "GET") return next();
+  if (req.method !== "POST") return next();
 
-  const key = req.originalUrl;
+  const key = req.originalUrl + JSON.stringify(req.body);
+
   const cached = myCache.get(key);
 
   if (cached) {
@@ -12,6 +13,7 @@ const cacheMiddleware = (req, res, next) => {
   }
 
   const originalJson = res.json.bind(res);
+
   res.json = (body) => {
     myCache.set(key, body);
     return originalJson(body);

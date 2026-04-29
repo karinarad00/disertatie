@@ -5,6 +5,7 @@ const path = require("path");
 const fetch = require("node-fetch");
 const oci = require("oci-sdk");
 const authenticateToken = require("../middleware/authMiddleware");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 const { executeQuery } = require("../db");
 
 const router = express.Router();
@@ -161,7 +162,7 @@ router.get("/preview_cv", async (req, res) => {
 });
 
 // ================= ANALYZE CV =================
-router.post("/analyze", async (req, res) => {
+router.post("/analyze", cacheMiddleware, async (req, res) => {
   try {
     const { cvUrl } = req.body;
 
@@ -194,7 +195,7 @@ router.post("/analyze", async (req, res) => {
 });
 
 // ================= SUGGESTIONS =================
-router.post("/suggestions", async (req, res) => {
+router.post("/suggestions", cacheMiddleware, async (req, res) => {
   const { cvUrl } = req.body;
 
   if (!cvUrl) {

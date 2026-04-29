@@ -55,6 +55,29 @@ function formatTimestamp(ts) {
 async function importJobs() {
   await initialize();
 
+  console.log("🧹 Cleaning old Jooble data...");
+
+// 🔴 DELETE CHILD TABLE FIRST (safe even if empty)
+await executeQuery(
+  `DELETE FROM Job_Limba_Straina
+   WHERE id_job IN (
+     SELECT id_job FROM Job 
+     WHERE link_extern LIKE 'https://jooble.org/%'
+   )`,
+  {},
+  { autoCommit: true },
+);
+
+// 🔴 DELETE JOOBLE JOBS
+await executeQuery(
+  `DELETE FROM Job 
+   WHERE link_extern LIKE 'https://jooble.org/%'`,
+  {},
+  { autoCommit: true },
+);
+
+console.log("✅ Old Jooble jobs deleted");
+
   for (const job of jobs) {
     try {
       // 🔎 verifică dacă jobul există

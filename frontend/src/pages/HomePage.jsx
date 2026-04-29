@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import JobList from "../components/JobList";
 import JobSlider from "../components/JobSlider";
-import { Search, MapPin, Briefcase, DollarSign, Clock } from "lucide-react";
+import { Search, MapPin, Building2 } from "lucide-react";
 
 const HomePage = () => {
   const [paidJobs, setPaidJobs] = useState([]);
@@ -13,8 +13,8 @@ const HomePage = () => {
 
   const [searchInput, setSearchInput] = useState("");
   const [cityInput, setCityInput] = useState("");
+  const [companyInput, setCompanyInput] = useState("");
 
-  const [filterCompany, setFilterCompany] = useState("");
   const [filterExperience, setFilterExperience] = useState("");
   const [filterDomain, setFilterDomain] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("");
@@ -28,7 +28,40 @@ const HomePage = () => {
 
   const jobsPerPage = 10;
 
-  // 🔥 Fetch promoted jobs
+  // ---------------- AUTOFILL ENGINE ----------------
+  const normalize = (s) => (s || "").toString().toLowerCase().trim();
+
+  const getSuggestions = (value, source, mapFn = (x) => x) => {
+    if (!value) return [];
+
+    const input = normalize(value);
+
+    return [...new Set(source)]
+      .map(mapFn)
+      .filter(Boolean)
+      .map((item) => {
+        const text = normalize(item);
+
+        let score = 0;
+
+        if (text === input) score += 100;
+        else if (text.startsWith(input)) score += 80;
+        else if (text.includes(input)) score += 50;
+
+        // bonus for word match (better UX)
+        if (text.split(" ").some((w) => w.startsWith(input))) {
+          score += 20;
+        }
+
+        return { item, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((x) => x.item);
+  };
+
+  // promoted jobs
   useEffect(() => {
     fetch("http://localhost:5000/api/jobs/promoted")
       .then((res) => res.json())
@@ -42,7 +75,7 @@ const HomePage = () => {
       });
   }, []);
 
-  // 🔥 Fetch filter options
+  // filters
   useEffect(() => {
     fetch("http://localhost:5000/api/jobs/filters")
       .then((res) => res.json())
@@ -51,12 +84,10 @@ const HomePage = () => {
         setExperienceOptions(data.experience);
         setDomainOptions(data.domains);
       })
-      .catch((err) => {
-        console.error(err);
-      });
+      .catch(console.error);
   }, []);
 
-  // 🔥 Fetch jobs
+  // fetch jobs
   const fetchJobs = async (page = 1) => {
     setLoadingJobs(true);
     setErrorJobs(null);
@@ -65,7 +96,7 @@ const HomePage = () => {
       const params = new URLSearchParams({
         search: searchInput,
         city: cityInput,
-        company: filterCompany,
+        company: companyInput,
         experience: filterExperience,
         domain: filterDomain,
         period: filterPeriod,
@@ -75,9 +106,7 @@ const HomePage = () => {
 
       const res = await fetch(`http://localhost:5000/api/jobs/all?${params}`);
 
-      if (!res.ok) {
-        throw new Error("Server error");
-      }
+      if (!res.ok) throw new Error("Server error");
 
       const data = await res.json();
 
@@ -87,42 +116,93 @@ const HomePage = () => {
     } catch (err) {
       console.error(err);
       setErrorJobs("Serverul nu este disponibil momentan.");
-      setJobs([]); // optional: clear jobs
+      setJobs([]);
     } finally {
       setLoadingJobs(false);
     }
   };
 
-  // initial load
   useEffect(() => {
     fetchJobs(1);
   }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Search Section */}
+      {/* SEARCH */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4 mb-4">
+          {/* TITLE */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <input
-              type="text"
+              className="w-full pl-10 pr-4 py-3 border rounded-lg"
               placeholder="Titlu job..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border rounded-lg"
             />
+
+            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+              {getSuggestions(searchInput, jobs, (j) => j.titlu || j.title).map(
+                (s, i) => (
+                  <div
+                    key={i}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => setSearchInput(s)}
+                  >
+                    {s}
+                  </div>
+                ),
+              )}
+            </div>
           </div>
 
+          {/* CITY */}
           <div className="flex-1 relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <input
-              type="text"
+              className="w-full pl-10 pr-4 py-3 border rounded-lg"
               placeholder="Oraș..."
               value={cityInput}
               onChange={(e) => setCityInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border rounded-lg"
             />
+
+            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+              {getSuggestions(cityInput, jobs, (j) => j.oras || j.city).map(
+                (s, i) => (
+                  <div
+                    key={i}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => setCityInput(s)}
+                  >
+                    {s}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+
+          {/* COMPANY */}
+          <div className="flex-1 relative">
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+            <input
+              className="w-full pl-10 pr-4 py-3 border rounded-lg"
+              placeholder="Companie..."
+              value={companyInput}
+              onChange={(e) => setCompanyInput(e.target.value)}
+            />
+
+            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+              {getSuggestions(companyInput, companyOptions).map((s, i) => (
+                <div
+                  key={i}
+                  className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                  onClick={() => setCompanyInput(s)}
+                >
+                  <Building2 className="size-4 text-gray-500" />
+                  {s}
+                </div>
+              ))}
+            </div>
           </div>
 
           <button
@@ -133,7 +213,7 @@ const HomePage = () => {
           </button>
         </div>
 
-        {/* Filters */}
+        {/* FILTERS unchanged */}
         <div className="flex flex-wrap gap-4">
           <select
             value={filterExperience}
@@ -168,25 +248,11 @@ const HomePage = () => {
             <option value="3d">3 zile</option>
             <option value="7d">7 zile</option>
           </select>
-
-          <select
-            value={filterCompany}
-            onChange={(e) => setFilterCompany(e.target.value)}
-          >
-            <option value="">Companie</option>
-            {companyOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
-      {/* Slider */}
       <JobSlider loading={loadingPaidJobs} jobs={paidJobs} />
 
-      {/* Error Message */}
       {errorJobs && (
         <div className="text-center py-6">
           <p className="text-red-500 font-semibold">⚠️ {errorJobs}</p>
@@ -199,14 +265,12 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Jobs */}
       <h2 className="text-2xl font-semibold mt-6 mb-4">Joburi disponibile</h2>
 
       {!errorJobs && <JobList loading={loadingJobs} jobs={jobs} />}
 
-      {/* 🔢 Smart Pagination */}
+      {/* PAGINATION (UNCHANGED) */}
       <div className="flex justify-center mt-6 gap-2 flex-wrap">
-        {/* Prev */}
         <button
           onClick={() => fetchJobs(currentPage - 1)}
           disabled={currentPage === 1}
@@ -215,7 +279,6 @@ const HomePage = () => {
           Prev
         </button>
 
-        {/* Helper to build pages */}
         {(() => {
           const pages = [];
 
@@ -244,34 +307,25 @@ const HomePage = () => {
           const total = totalPages;
 
           if (total <= 7) {
-            // show all pages if small
             for (let i = 1; i <= total; i++) addPage(i);
           } else {
-            // always first page
             addPage(1);
 
-            // left dots
-            if (currentPage > 3) addDots("start-dots");
+            if (currentPage > 3) addDots("start");
 
-            // middle range
             const start = Math.max(2, currentPage - 2);
             const end = Math.min(total - 1, currentPage + 2);
 
-            for (let i = start; i <= end; i++) {
-              addPage(i);
-            }
+            for (let i = start; i <= end; i++) addPage(i);
 
-            // right dots
-            if (currentPage < total - 2) addDots("end-dots");
+            if (currentPage < total - 2) addDots("end");
 
-            // always last page
             addPage(total);
           }
 
           return pages;
         })()}
 
-        {/* Next */}
         <button
           onClick={() => fetchJobs(currentPage + 1)}
           disabled={currentPage === totalPages}
