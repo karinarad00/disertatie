@@ -54,6 +54,7 @@ function App() {
     <Routes>
       <Route element={<Layout user={user} />}>
         {/* Public routes */}
+        <Route path="/map" element={<MapPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/cerere-angajator" element={<CerereAngajatorPage />} />
@@ -148,14 +149,6 @@ function App() {
           element={
             <ProtectedRoute user={user}>
               <RejectRequest />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/map"
-          element={
-            <ProtectedRoute user={user}>
-              <MapPage />
             </ProtectedRoute>
           }
         />

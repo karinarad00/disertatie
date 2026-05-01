@@ -59,12 +59,21 @@ router.get("/locations", cacheMiddleware, async (req, res) => {
   try {
     const result = await executeQuery(`
       SELECT 
+        j.id_job,
+        j.titlu,
+        c.id_companie,
         c.denumire_companie AS company,
         cc.adresa AS address,
-        o.denumire_oras AS city
-      FROM Companie c
+        o.id_oras,
+        o.denumire_oras AS city,
+        cc.latitudine AS lat,
+        cc.longitudine AS lng
+      FROM Job j
+      JOIN Companie c ON j.id_companie = c.id_companie
       JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
       JOIN Oras o ON cc.id_oras = o.id_oras
+      WHERE cc.latitudine IS NOT NULL
+        AND cc.longitudine IS NOT NULL
     `);
 
     res.json(result);
