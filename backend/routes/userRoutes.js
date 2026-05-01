@@ -9,6 +9,35 @@ require("dotenv").config();
 
 const { sendResetEmail } = require("../mailer");
 
+// ================= ADMIN STATS =================
+router.get("/admin/stats", authenticateToken, async (req, res) => {
+  if (req.user.role !== "Administrator") {
+    return res.status(403).json({ message: "Acces interzis." });
+  }
+
+  try {
+    const totalUsers = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Utilizator`);
+    const totalJobs = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Job`);
+    const totalCompanies = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Companie`);
+    const totalApps = await executeQuery(`SELECT COUNT(*) as TOTAL FROM APLICARE_JOB`);
+    
+    const usersByType = await executeQuery(
+      `SELECT tip_utilizator, COUNT(*) as COUNT FROM Utilizator GROUP BY tip_utilizator`
+    );
+
+    res.json({
+      totalUsers: totalUsers[0].TOTAL,
+      totalJobs: totalJobs[0].TOTAL,
+      totalCompanies: totalCompanies[0].TOTAL,
+      totalApps: totalApps[0].TOTAL,
+      usersByType
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
 // ================= REGISTER =================
 router.post("/register", async (req, res) => {
   const { username, email, password, phone, location, experience } = req.body;
