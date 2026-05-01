@@ -93,11 +93,11 @@ const AnalizaCv = () => {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* CV + Recommendations */}
+          {/* CV Preview */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Analiză CV
+                CV Încărcat
               </h1>
 
               {error && (
@@ -121,55 +121,6 @@ const AnalizaCv = () => {
                   </div>
                 )}
               </div>
-
-              {recommendations && (
-                <div className="mt-6 space-y-6">
-                  {/* Strengths */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center gap-2 mb-4 text-green-600">
-                      <CheckCircle className="size-5" />
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Puncte forte
-                      </h3>
-                    </div>
-                    <ul className="list-disc list-inside text-gray-700">
-                      {scores.strengths.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Weaknesses */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center gap-2 mb-4 text-red-600">
-                      <XCircle className="size-5" />
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Puncte slabe
-                      </h3>
-                    </div>
-                    <ul className="list-disc list-inside text-gray-700">
-                      {scores.weaknesses.map((w, i) => (
-                        <li key={i}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Suggestions */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center gap-2 mb-4 text-blue-600">
-                      <TrendingUp className="size-5" />
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Sugestii de îmbunătățire
-                      </h3>
-                    </div>
-                    <ul className="list-disc list-inside text-gray-700">
-                      {scores.suggestions.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -234,6 +185,61 @@ const AnalizaCv = () => {
             </div>
           </div>
         </div>
+
+        {/* Recommendations - Full Width Box */}
+        {recommendations && (
+          <div className="mt-8 space-y-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              Analiză CV
+            </h1>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Strengths */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center gap-2 mb-4 text-green-600">
+                  <CheckCircle className="size-5" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Puncte forte
+                  </h3>
+                </div>
+                <ul className="list-disc list-inside text-gray-700">
+                  {scores.strengths.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Weaknesses */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center gap-2 mb-4 text-red-600">
+                  <XCircle className="size-5" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Puncte slabe
+                  </h3>
+                </div>
+                <ul className="list-disc list-inside text-gray-700">
+                  {scores.weaknesses.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Suggestions */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center gap-2 mb-4 text-blue-600">
+                  <TrendingUp className="size-5" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Sugestii de îmbunătățire
+                  </h3>
+                </div>
+                <ul className="list-disc list-inside text-gray-700">
+                  {scores.suggestions.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
