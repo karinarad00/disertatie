@@ -18,8 +18,6 @@ axiosClient.interceptors.request.use(
     const state = store.getState();
     const token = state.auth?.user?.token;
 
-    console.log("Axios Interceptor - Token from state:", token ? "Found" : "Missing");
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

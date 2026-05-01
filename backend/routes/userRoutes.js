@@ -11,7 +11,7 @@ const { sendResetEmail } = require("../mailer");
 
 // ================= REGISTER =================
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, phone, location, experience } = req.body;
 
   try {
     const existing = await executeQuery(
@@ -31,11 +31,20 @@ router.post("/register", async (req, res) => {
 
     await executeQuery(
       `INSERT INTO Utilizator (
-        id_utilizator, username, email, parola, tip_utilizator
+        id_utilizator, username, email, parola, tip_utilizator,
+        phone, location, experience
       ) VALUES (
-        seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat'
+        seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat',
+        :phone, :location, :experience
       )`,
-      { username, email, password: hashedPassword },
+      {
+        username,
+        email,
+        password: hashedPassword,
+        phone: phone || null,
+        location: location || null,
+        experience: experience || null,
+      },
       { autoCommit: true }
     );
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../redux/authSlice";
+import { resetAuth } from "../redux/authSlice";
 import { MapPin, LogIn, User, Building2, Shield, LogOut } from "lucide-react";
 
 const Navbar = () => {
@@ -9,9 +9,11 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  // Handle logout (Redux handles persistence via redux-persist)
+  // Handle logout
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(resetAuth());
+    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

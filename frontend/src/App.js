@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
-import { logout } from "./redux/authSlice";
+import { resetAuth } from "./redux/authSlice";
 import { setAxiosLogoutHandler } from "./axiosClient";
 
 import Layout from "./components/Layout";
@@ -38,7 +38,9 @@ function App() {
 
   useEffect(() => {
     setAxiosLogoutHandler(() => {
-      dispatch(logout());
+      dispatch(resetAuth());
+      localStorage.clear();
+      sessionStorage.clear();
 
       // prevent unnecessary redirects
       if (window.location.pathname !== "/login") {

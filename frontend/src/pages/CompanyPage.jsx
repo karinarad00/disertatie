@@ -29,6 +29,8 @@ export default function CompanyProfile() {
 
   const logoutAndRedirect = () => {
     dispatch(logout());
+    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

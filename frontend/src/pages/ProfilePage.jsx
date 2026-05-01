@@ -25,6 +25,8 @@ export default function ProfilePage() {
   // Logout
   const logoutAndRedirect = useCallback(() => {
     dispatch(logout());
+    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   }, [dispatch, navigate]);
 
