@@ -63,6 +63,7 @@ function App() {
         <Route path="/reset-password" element={<RequestReset />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/" element={<HomePage />} />
+        <Route path="/job/:id" element={<JobDetailsPage />} />
 
         {/* Protected routes */}
         <Route
@@ -102,14 +103,6 @@ function App() {
           element={
             <ProtectedRoute user={user}>
               <CandidateMatch />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/job/:id"
-          element={
-            <ProtectedRoute user={user}>
-              <JobDetailsPage />
             </ProtectedRoute>
           }
         />
