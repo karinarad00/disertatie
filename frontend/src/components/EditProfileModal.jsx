@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { updateProfile } from "../redux/authSlice";
 import { X, Upload } from "lucide-react";
+import axios from "../axiosClient";
 
-export function EditProfileModal({ isOpen, onClose }) {
+export function EditProfileModal({ isOpen, onClose, user }) {
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -38,11 +38,10 @@ export function EditProfileModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    fetch("http://localhost:5000/api/jobs/filters")
-      .then((res) => res.json())
-      .then((data) => {
-        setLocationOptions(data.locations || []);
-        setExperienceOptions(data.experience || []);
+    axios.get("/api/jobs/filters")
+      .then((res) => {
+        setLocationOptions(res.data.locations || []);
+        setExperienceOptions(res.data.experience || []);
       })
       .catch((err) => console.error("Eroare la preluarea filtrelor:", err));
   }, [isOpen]);
@@ -78,7 +77,7 @@ export function EditProfileModal({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      if (!user?.token) throw new Error("Nu ești autentificat");
+      if (!user) throw new Error("Nu ești autentificat");
 
       const payload = {
         username: formData.username,
@@ -88,44 +87,24 @@ export function EditProfileModal({ isOpen, onClose }) {
         location: formData.location ? Number(formData.location) : null,
       };
 
-      const resProfile = await fetch(
-        "http://localhost:5000/api/users/update-profile",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user.token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-
-      const dataProfile = await resProfile.json();
-      if (!resProfile.ok)
-        throw new Error(dataProfile.message || "Eroare la actualizare");
+      const resProfile = await axios.put("/api/users/update-profile", payload);
 
       let updatedUser = {
         ...user,
-        ...dataProfile.user,
+        ...resProfile.data.user,
       };
 
       if (selectedFile) {
         const formDataImage = new FormData();
         formDataImage.append("profileImage", selectedFile);
 
-        const resImage = await fetch("http://localhost:5000/api/image/upload", {
-          method: "POST",
+        const resImage = await axios.post("/api/image/upload", formDataImage, {
           headers: {
-            Authorization: `Bearer ${user.token}`,
+            "Content-Type": "multipart/form-data"
           },
-          body: formDataImage,
         });
 
-        const dataImage = await resImage.json();
-        if (!resImage.ok)
-          throw new Error(dataImage.message || "Eroare upload imagine");
-
-        updatedUser.imagine_profil = dataImage.url;
+        updatedUser.imagine_profil = resImage.data.url;
       }
 
       dispatch(updateProfile(updatedUser));
@@ -134,7 +113,9 @@ export function EditProfileModal({ isOpen, onClose }) {
       onClose();
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        alert(err.response?.data?.message || err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -179,57 +160,77 @@ export function EditProfileModal({ isOpen, onClose }) {
             </div>
 
             {/* INPUTS */}
-            <input
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nume utilizator</label>
+                <input
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="Introdu numele de utilizator"
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
 
-            <input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Introdu adresa de email"
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
 
-            <input
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-            />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <input
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Introdu numărul de telefon"
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
 
-            <select
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">Selectează locația</option>
-              {locationOptions.map((loc) => (
-                <option key={loc.id_oras} value={loc.id_oras}>
-                  {loc.denumire_oras}
-                </option>
-              ))}
-            </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Locație</label>
+                <select
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Selectează locația</option>
+                  {locationOptions.map((loc) => (
+                    <option key={loc.id_oras} value={loc.id_oras}>
+                      {loc.denumire_oras}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <select
-              name="experience"
-              value={formData.experience}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">Selectează experiența</option>
-              {experienceOptions.map((exp) => (
-                <option key={exp} value={exp}>
-                  {exp}
-                </option>
-              ))}
-            </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Experiență</label>
+                <select
+                  name="experience"
+                  value={formData.experience}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Selectează experiența</option>
+                  {experienceOptions.map((exp) => (
+                    <option key={exp} value={exp}>
+                      {exp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2">
               <button type="button" onClick={onClose}>

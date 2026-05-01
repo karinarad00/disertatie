@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import JobCard from "../components/JobCard";
 import { ArrowLeft, Sparkles, TrendingUp, Target } from "lucide-react";
+import axios from "../axiosClient";
 
 const Sugestii = () => {
-  const [token, setToken] = useState("");
   const [cvUrl, setCvUrl] = useState("");
   const [jobs, setJobs] = useState([]);
   const [explanation, setExplanation] = useState("");
@@ -20,13 +20,12 @@ const Sugestii = () => {
   // Load user
   useEffect(() => {
     if (user) {
-      setToken(user.token);
       setCvUrl(user.cv_url);
     } else {
       setLoading(false);
-      setError("Nu ești autentificat.");
+      // We don't set error immediately, wait for hydration
     }
-  }, []);
+  }, [user]);
 
   const fetchSuggestions = async () => {
     if (!cvUrl) return;
@@ -34,25 +33,18 @@ const Sugestii = () => {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/cv/suggestions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ cvUrl }),
-      });
+      const res = await axios.post("/api/cv/suggestions", { cvUrl });
 
-      if (!res.ok) throw new Error("Server error");
-
-      const data = await res.json();
+      const data = res.data;
       console.log("Sugestii primite:", data);
       setJobs(data.jobs || []);
       setExplanation(data.explanation || "");
       setCurrentPage(1);
     } catch (err) {
       console.error(err);
-      setError("Nu am putut încărca sugestiile de joburi.");
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+         setError("Nu am putut încărca sugestiile de joburi.");
+      }
       setJobs([]);
     } finally {
       setLoading(false);
@@ -60,8 +52,8 @@ const Sugestii = () => {
   };
 
   useEffect(() => {
-    if (cvUrl && token) fetchSuggestions();
-  }, [cvUrl, token]);
+    if (cvUrl) fetchSuggestions();
+  }, [cvUrl]);
 
   // Pagination
   const totalPages = Math.ceil(jobs.length / jobsPerPage);

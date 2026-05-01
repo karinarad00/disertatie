@@ -1,19 +1,19 @@
 import React, { useState } from "react";
 import { Upload } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
-import { updateProfile, logout } from "../redux/authSlice";
+import { useDispatch } from "react-redux";
+import { updateProfile } from "../redux/authSlice";
+import axios from "../axiosClient";
 
 export function ChangeCVModal({
   isOpen,
   onClose,
-  logoutAndRedirect,
+  user,
   setError,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.user);
 
   if (!isOpen) return null;
 
@@ -21,7 +21,10 @@ export function ChangeCVModal({
 
   const handleUploadClick = async () => {
     if (!selectedFile) return;
-    if (!user?.token) return setError("Trebuie să fii autentificat.");
+    
+    // We don't need to manually check token here anymore for the request, 
+    // axios interceptor handles it, but we check if we HAVE a user just in case.
+    if (!user) return setError("Trebuie să fii autentificat.");
 
     const formData = new FormData();
     formData.append("cv", selectedFile);
@@ -29,28 +32,20 @@ export function ChangeCVModal({
     try {
       setUploading(true);
 
-      const res = await fetch("http://localhost:5000/api/cv/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${user.token}` },
-        body: formData,
-      });
+      const res = await axios.post("/api/cv/upload", formData);
 
-      if (res.status === 401) {
-        dispatch(logout());
-        return logoutAndRedirect();
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
-
-      dispatch(updateProfile({ cv_url: data.url }));
+      dispatch(updateProfile({ cv_url: res.data.url }));
 
       setSelectedFile(null);
       setError("");
       alert("CV încărcat cu succes!");
       onClose();
     } catch (err) {
-      setError("Eroare la încărcarea CV-ului: " + err.message);
+      console.error("CV upload error:", err);
+      // axiosClient handles 401/403
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        setError("Eroare la încărcarea CV-ului: " + (err.response?.data?.message || err.message));
+      }
     } finally {
       setUploading(false);
     }

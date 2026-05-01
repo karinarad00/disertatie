@@ -2,7 +2,8 @@
 import React, { useState } from "react";
 import { Upload } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { updateUser } from "../redux/authSlice";
+import { updateProfile } from "../redux/authSlice";
+import axios from "../axiosClient";
 
 export function UploadCVButton({ logoutAndRedirect, setError }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -17,7 +18,7 @@ export function UploadCVButton({ logoutAndRedirect, setError }) {
 
   const handleUploadClick = async () => {
     if (!selectedFile) return;
-    if (!user?.token) return setError("Trebuie să fii autentificat.");
+    if (!user) return setError("Trebuie să fii autentificat.");
 
     const formData = new FormData();
     formData.append("cv", selectedFile);
@@ -25,25 +26,19 @@ export function UploadCVButton({ logoutAndRedirect, setError }) {
     try {
       setUploading(true);
 
-      const res = await fetch("http://localhost:5000/api/cv/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${user.token}` },
-        body: formData,
-      });
+      const res = await axios.post("/api/cv/upload", formData);
 
-      if (res.status === 401) return logoutAndRedirect();
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Eroare la încărcare.");
-
-      // ✅ Update Redux state only
-      dispatch(updateUser({ ...user, cv_url: data.url }));
+      // ✅ Update Redux state
+      dispatch(updateProfile({ cv_url: res.data.url }));
 
       setSelectedFile(null);
       setError("");
       alert("CV încărcat cu succes!");
     } catch (err) {
-      setError("Eroare la încărcarea CV-ului: " + err.message);
+      console.error("CV upload error:", err);
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        setError("Eroare la încărcarea CV-ului: " + (err.response?.data?.message || err.message));
+      }
     } finally {
       setUploading(false);
     }

@@ -90,6 +90,7 @@ router.post(
       await executeQuery(
         `UPDATE utilizator SET imagine_profil = :url WHERE id_utilizator = :id`,
         { url: preSignedUrl, id: userId },
+        { autoCommit: true },
       );
 
       res.json({

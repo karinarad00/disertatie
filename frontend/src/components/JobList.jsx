@@ -8,25 +8,19 @@ const JobList = ({ jobs, loading = false }) => {
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role !== "Candidat") return;
 
-    if (user.role === "Candidat") {
-      const fetchFavorites = async () => {
-        try {
-          const res = await axios.get(
-            "http://localhost:5000/api/favorites/list",
-            { headers: { Authorization: `Bearer ${user.token}` } },
-          );
+    const fetchFavorites = async () => {
+      try {
+        const res = await axios.get("/api/favorites/list");
+        setFavorites(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Eroare la preluarea favorite:", err);
+        setFavorites([]);
+      }
+    };
 
-          setFavorites(Array.isArray(res.data) ? res.data : []);
-        } catch (err) {
-          console.error("Eroare la preluarea favorite:", err);
-          setFavorites([]);
-        }
-      };
-
-      fetchFavorites();
-    }
+    fetchFavorites();
   }, [user]);
 
   if (loading) {

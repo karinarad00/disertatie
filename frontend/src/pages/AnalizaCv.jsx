@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import axios from "../axiosClient";
 
 const AnalizaCv = () => {
-  const [token, setToken] = useState("");
   const [cvUrl, setCvUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,10 +32,9 @@ const AnalizaCv = () => {
 
   useEffect(() => {
     if (user) {
-      setToken(user.token);
       setCvUrl(user.cv_url);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (cvUrl) handleAnalyze();
@@ -47,16 +46,9 @@ const AnalizaCv = () => {
     setError("");
     setRecommendations("");
     try {
-      const res = await fetch("http://localhost:5000/api/cv/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ cvUrl }),
-      });
-      if (!res.ok) throw new Error("Eroare la analiza CV-ului");
-      const data = await res.json();
+      const res = await axios.post("/api/cv/analyze", { cvUrl });
+      
+      const data = res.data;
 
       setRecommendations(data.recommendations || "");
       setScores({
@@ -70,7 +62,9 @@ const AnalizaCv = () => {
       });
     } catch (err) {
       console.error(err);
-      setError("A apărut o eroare la analiza CV-ului.");
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        setError("A apărut o eroare la analiza CV-ului.");
+      }
     } finally {
       setLoading(false);
     }

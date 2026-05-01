@@ -36,6 +36,7 @@ router.post("/register", async (req, res) => {
         seq_utilizator.NEXTVAL, :username, :email, :password, 'Candidat'
       )`,
       { username, email, password: hashedPassword },
+      { autoCommit: true }
     );
 
     res.status(201).json({ message: "Utilizator înregistrat cu succes." });
@@ -128,6 +129,7 @@ router.post("/request-reset", async (req, res) => {
       `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
        VALUES (:id_utilizator, :token, :expires_at)`,
       { id_utilizator: userId, token, expires_at: expiresAt },
+      { autoCommit: true }
     );
 
     const resetLink = `http://localhost:3000/change-password?token=${token}`;
@@ -170,11 +172,12 @@ router.post("/reset-password", async (req, res) => {
        SET parola = :parola 
        WHERE id_utilizator = :id`,
       { parola: hashedPassword, id: ID_UTILIZATOR },
+      { autoCommit: true }
     );
 
     await executeQuery(`DELETE FROM reset_tokens WHERE token = :token`, {
       token,
-    });
+    }, { autoCommit: true });
 
     res.json({ message: "Parolă schimbată." });
   } catch (err) {

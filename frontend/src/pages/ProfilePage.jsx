@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, updateProfile } from "../redux/authSlice";
+import axios from "../axiosClient";
 
 import { ProfileCard } from "../components/ProfileCard";
 import { CVSection } from "../components/CVSection";
@@ -19,12 +20,13 @@ export default function ProfilePage() {
   const [favoriteJobs, setFavoriteJobs] = useState([]);
   const [isCVModalOpen, setIsCVModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Logout
-  const logoutAndRedirect = () => {
+  const logoutAndRedirect = useCallback(() => {
     dispatch(logout());
     navigate("/login");
-  };
+  }, [dispatch, navigate]);
 
   // Checkout handler
   const handleCheckout = async (prodType) => {
@@ -39,96 +41,70 @@ export default function ProfilePage() {
     }
 
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/stripe/create-checkout-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`,
-          },
-          body: JSON.stringify({ userId: user.id, prodType }),
-        },
-      );
+      const res = await axios.post("/api/stripe/create-checkout-session", {
+        userId: user.id,
+        prodType,
+      });
 
-      if (res.status === 401) return logoutAndRedirect();
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Eroare la creare sesiune");
-
-      window.location.href = data.url;
+      window.location.href = res.data.url;
     } catch (err) {
-      setError("Eroare la inițierea plății: " + err.message);
+      setError("Eroare la inițierea plății: " + (err.response?.data?.error || err.message));
     }
   };
 
   // Fetch profile (sync Redux with backend)
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user?.token) {
-        setError("Trebuie să fii autentificat.");
-        return;
-      }
+      // If we don't have a user yet, we might be waiting for redux-persist hydration.
+      // We don't show an error here, we just wait.
+      if (!user?.token) return;
 
       try {
-        const res = await fetch("http://localhost:5000/api/users/profil", {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-
-        if (res.status === 401) return logoutAndRedirect();
-
-        const data = await res.json();
-
-        dispatch(updateProfile(data));
+        setLoadingProfile(true);
+        const res = await axios.get("/api/users/profil");
+        dispatch(updateProfile(res.data));
+        setError(""); 
       } catch (err) {
-        console.error(err);
-        setError(err.message);
+        console.error("Profile fetch error:", err);
+        // axiosClient handles 401/403, so we only handle other errors here
+        if (err.response?.status !== 401 && err.response?.status !== 403) {
+           setError(err.response?.data?.message || err.message);
+        }
+      } finally {
+        setLoadingProfile(false);
       }
     };
 
     fetchProfile();
-  }, [dispatch]);
+  }, [user?.token, dispatch]);
 
   // Fetch favorite jobs
   useEffect(() => {
     const fetchFavorites = async () => {
-      if (!user || user.role !== "Candidat") return;
+      if (!user?.token || user?.role !== "Candidat") return;
 
       try {
-        const res = await fetch("http://localhost:5000/api/favorites/all", {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-
-        if (res.status === 401) return logoutAndRedirect();
-
-        const jobs = await res.json();
-        setFavoriteJobs(jobs);
+        const res = await axios.get("/api/favorites/all");
+        setFavoriteJobs(res.data);
       } catch (err) {
         console.error("Eroare la preluarea joburilor favorite:", err);
       }
     };
 
     fetchFavorites();
-  }, [user]);
+  }, [user?.token, user?.role]);
 
   // Delete favorite job
   const handleDeleteFavorite = async (jobId) => {
     try {
-      const res = await fetch("http://localhost:5000/api/favorites/remove", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ ID_JOB: jobId }),
+      await axios.delete("/api/favorites/remove", {
+        data: { ID_JOB: jobId },
       });
-
-      if (!res.ok) throw new Error("Eroare la ștergerea jobului favorite");
 
       setFavoriteJobs((prev) => prev.filter((j) => j.ID_JOB !== jobId));
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      alert(err.response?.data?.error || err.message);
     }
   };
 
@@ -137,8 +113,10 @@ export default function ProfilePage() {
       <div className="text-red-600 font-semibold text-center mt-4">{error}</div>
     );
 
-  if (!user)
+  // If no user yet, we are either not logged in or rehydrating
+  if (!user) {
     return <div className="italic text-center mt-4">Se încarcă...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -176,7 +154,6 @@ export default function ProfilePage() {
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         user={user}
-        onProfileUpdated={(updatedUser) => dispatch(updateProfile(updatedUser))}
       />
     </div>
   );

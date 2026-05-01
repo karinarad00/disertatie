@@ -1,25 +1,19 @@
 // authThunks.js
 import { loginStart, loginSuccess, loginFailure } from "./authSlice";
+import axios from "../axiosClient";
 
 export const loginUser = (email, password) => async (dispatch) => {
   dispatch(loginStart());
 
   try {
-    const response = await fetch("http://localhost:5000/api/users/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    const response = await axios.post("/api/users/login", {
+      email,
+      password,
     });
 
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || "Eroare la autentificare.");
-    }
-
-    const userData = await response.json();
-
-    dispatch(loginSuccess(userData));
+    dispatch(loginSuccess(response.data));
   } catch (error) {
-    dispatch(loginFailure(error.message));
+    const message = error.response?.data?.message || error.message || "Eroare la autentificare.";
+    dispatch(loginFailure(message));
   }
 };

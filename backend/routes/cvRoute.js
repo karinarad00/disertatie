@@ -93,6 +93,7 @@ router.post(
       await executeQuery(
         `UPDATE utilizator SET cv_url = :url WHERE id_utilizator = :id`,
         { url: preSignedUrl, id: userId },
+        { autoCommit: true },
       );
 
       res.json({
