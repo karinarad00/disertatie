@@ -16,22 +16,79 @@ router.get("/admin/stats", authenticateToken, async (req, res) => {
   }
 
   try {
-    const totalUsers = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Utilizator`);
-    const totalJobs = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Job`);
-    const totalCompanies = await executeQuery(`SELECT COUNT(*) as TOTAL FROM Companie`);
-    const totalApps = await executeQuery(`SELECT COUNT(*) as TOTAL FROM APLICARE_JOB`);
-    
-    const usersByType = await executeQuery(
-      `SELECT tip_utilizator, COUNT(*) as COUNT FROM Utilizator GROUP BY tip_utilizator`
+    const totalUsers = await executeQuery(
+      `SELECT COUNT(*) AS total FROM Utilizator
+       WHERE tip_utilizator != 'Administrator'`,
     );
 
+    const totalJobs = await executeQuery(`SELECT COUNT(*) AS total FROM Job`);
+
+    const totalCompanies = await executeQuery(
+      `SELECT COUNT(*) AS total FROM Companie`,
+    );
+
+    const totalApps = await executeQuery(
+      `SELECT COUNT(*) AS total FROM APLICARE_JOB`,
+    );
+
+    const usersByType = await executeQuery(`
+      SELECT tip_utilizator AS type, COUNT(*) AS count
+      FROM Utilizator
+      GROUP BY tip_utilizator
+    `);
+
+    const jobsByCategory = await executeQuery(`
+      SELECT d.denumire_domeniu AS CATEGORY, COUNT(j.id_job) AS COUNT
+      FROM Job j
+      JOIN Domeniu d ON j.id_domeniu = d.id_domeniu
+      GROUP BY d.denumire_domeniu
+      ORDER BY COUNT(j.id_job) DESC
+    `);
+    
+    const companiesByCity = await executeQuery(`
+      SELECT o.denumire_oras AS CITY, COUNT(DISTINCT c.id_companie) AS COUNT
+      FROM Companie c
+      JOIN CentruCompanie cc ON c.id_companie = cc.id_companie
+      JOIN Oras o ON cc.id_oras = o.id_oras
+      GROUP BY o.denumire_oras
+      ORDER BY COUNT DESC
+    `);
+    
     res.json({
       totalUsers: totalUsers[0].TOTAL,
       totalJobs: totalJobs[0].TOTAL,
       totalCompanies: totalCompanies[0].TOTAL,
       totalApps: totalApps[0].TOTAL,
-      usersByType
+      usersByType,
+      jobsByCategory,
+      companiesByCity,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// ================= ALL USERS (for admin table) ==================
+router.get("/admin/users", authenticateToken, async (req, res) => {
+  if (req.user.role !== "Administrator") {
+    return res.status(403).json({ message: "Acces interzis." });
+  }
+
+  try {
+    const users = await executeQuery(`
+      SELECT 
+        id_utilizator AS id,
+        username,
+        email,
+        tip_utilizator AS role,
+        created_at
+      FROM Utilizator
+      WHERE tip_utilizator != 'Administrator'
+      ORDER BY created_at DESC
+    `);
+
+    res.json(users);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Eroare server." });
