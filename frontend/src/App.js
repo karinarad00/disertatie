@@ -60,6 +60,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/cerere-angajator" element={<CerereAngajatorPage />} />
+        <Route path="/cerere/:id/aproba" element={<ApproveRequest />} />
+        <Route path="/cerere/:id/respinge" element={<RejectRequest />} />
         <Route path="/reset-password" element={<RequestReset />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/" element={<HomePage />} />
@@ -127,23 +129,6 @@ function App() {
           element={
             <ProtectedRoute user={user}>
               <AdminPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/cerere/:id/aproba"
-          element={
-            <ProtectedRoute user={user}>
-              <ApproveRequest />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/cerere/:id/respinge"
-          element={
-            <ProtectedRoute user={user}>
-              <RejectRequest />
             </ProtectedRoute>
           }
         />

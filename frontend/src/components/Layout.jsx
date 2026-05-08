@@ -8,7 +8,8 @@ const Layout = ({ user }) => {
 
   // Paths where navbar/footer should be hidden
   const noNavFooterPaths = ["/login", "/register", "/cerere-angajator"];
-  const hideNavbarFooter = noNavFooterPaths.includes(location.pathname);
+  const isCerereAction = /^\/cerere\/[^/]+\/(aproba|respinge)$/.test(location.pathname);
+  const hideNavbarFooter = noNavFooterPaths.includes(location.pathname) || isCerereAction;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

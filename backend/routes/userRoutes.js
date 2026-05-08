@@ -7,7 +7,13 @@ const jwt = require("jsonwebtoken");
 const authenticateToken = require("../middleware/authMiddleware");
 require("dotenv").config();
 
-const { sendResetEmail } = require("../mailer");
+const {
+  sendResetEmail,
+  sendEmployerRequestEmail,
+  sendAdminNotificationEmail,
+  sendEmployerDecisionEmail,
+  sendSetPasswordEmail,
+} = require("../mailer");
 
 // ================= ADMIN STATS =================
 router.get("/admin/stats", authenticateToken, async (req, res) => {
@@ -44,7 +50,7 @@ router.get("/admin/stats", authenticateToken, async (req, res) => {
       GROUP BY d.denumire_domeniu
       ORDER BY COUNT(j.id_job) DESC
     `);
-    
+
     const companiesByCity = await executeQuery(`
       SELECT o.denumire_oras AS CITY, COUNT(DISTINCT c.id_companie) AS COUNT
       FROM Companie c
@@ -53,7 +59,7 @@ router.get("/admin/stats", authenticateToken, async (req, res) => {
       GROUP BY o.denumire_oras
       ORDER BY COUNT DESC
     `);
-    
+
     res.json({
       totalUsers: totalUsers[0].TOTAL,
       totalJobs: totalJobs[0].TOTAL,
@@ -131,7 +137,7 @@ router.post("/register", async (req, res) => {
         location: location || null,
         experience: experience || null,
       },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     res.status(201).json({ message: "Utilizator înregistrat cu succes." });
@@ -224,7 +230,7 @@ router.post("/request-reset", async (req, res) => {
       `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
        VALUES (:id_utilizator, :token, :expires_at)`,
       { id_utilizator: userId, token, expires_at: expiresAt },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     const resetLink = `http://localhost:3000/change-password?token=${token}`;
@@ -267,16 +273,207 @@ router.post("/reset-password", async (req, res) => {
        SET parola = :parola 
        WHERE id_utilizator = :id`,
       { parola: hashedPassword, id: ID_UTILIZATOR },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
-    await executeQuery(`DELETE FROM reset_tokens WHERE token = :token`, {
-      token,
-    }, { autoCommit: true });
+    await executeQuery(
+      `DELETE FROM reset_tokens WHERE token = :token`,
+      {
+        token,
+      },
+      { autoCommit: true },
+    );
 
     res.json({ message: "Parolă schimbată." });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// ================= EMPLOYER REQUEST =================
+router.post("/cereri-angajatori", async (req, res) => {
+  const { id_companie, email, nume_contact, telefon, descriere } = req.body;
+
+  if (!id_companie || !email) {
+    return res
+      .status(400)
+      .json({ message: "Compania și email-ul sunt obligatorii." });
+  }
+
+  try {
+    // Verifică dacă deja există o cerere cu același id_companie și email
+    const existingRequest = await executeQuery(
+      `SELECT COUNT(*) AS count FROM CereriAngajatori WHERE id_companie = :id_companie AND email = :email`,
+      { id_companie, email }
+    );
+
+    if (existingRequest[0].COUNT > 0) {
+      return res.status(409).json({
+        message: "Există deja o cerere pentru această companie și email.",
+      });
+    }
+
+    // Continuă cu inserarea dacă nu există deja
+    const seqResult = await executeQuery(
+      `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`
+    );
+    const nextId = seqResult[0].NEXTID;
+
+    await executeQuery(
+      `INSERT INTO CereriAngajatori
+         (id_cerere, id_companie, email, nume_contact, telefon, descriere, status, data_cerere)
+         VALUES (:id_cerere, :id_companie, :email, :nume_contact, :telefon, :descriere, 'Pending', SYSDATE)`,
+      {
+        id_cerere: nextId,
+        id_companie,
+        email,
+        nume_contact,
+        telefon,
+        descriere,
+      },
+      { autoCommit: true },
+    );
+
+    // Obține denumirea companiei pentru email
+    const companyResult = await executeQuery(
+      `SELECT denumire_companie FROM Companie WHERE id_companie = :id_companie`,
+      { id_companie }
+    );
+    const denumire_companie = companyResult.length > 0 ? companyResult[0].DENUMIRE_COMPANIE : "Necunoscută";
+
+    // Trimite emailul de confirmare
+    try {
+      await sendEmployerRequestEmail(email, nume_contact);
+    } catch (emailErr) {
+      console.error("Eroare la trimiterea emailului:", emailErr);
+    }
+
+    // Notifică adminul (presupunem că emailul adminului este stocat în .env)
+    const adminEmail = process.env.ADMIN_EMAIL;
+    try {
+      await sendAdminNotificationEmail(adminEmail, {
+        id_cerere: nextId,
+        id_companie,
+        denumire_companie,
+        email,
+        nume_contact,
+        telefon,
+        descriere,
+      });
+    } catch (emailErr) {
+      console.error("Eroare la trimiterea notificării către admin:", emailErr);
+    }
+
+    res.status(201).json({ message: "Cererea a fost înregistrată." });
+  } catch (err) {
+    console.error("Eroare la inserarea cererii:", err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// Aprobare cerere angajator
+router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
+  const id_cerere = req.params.id;
+  console.log("ID cerere pentru aprobare (backend):", id_cerere);
+  try {
+    const result = await executeQuery(
+      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
+      [id_cerere]
+    );
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Cererea nu a fost găsită." });
+    }
+
+    const cerere = result[0];
+
+    // Creează un username pe baza email-ului
+    const username = cerere.EMAIL.split("@")[0];
+
+    // 1. Obține noul ID pentru utilizator
+    const seqUser = await executeQuery(`SELECT seq_utilizator.NEXTVAL AS nextId FROM dual`);
+    const userId = seqUser[0].NEXTID;
+
+    // 2. Creezi user
+    await executeQuery(
+      `INSERT INTO Utilizator (id_utilizator, username, email, tip_utilizator, id_companie)
+       VALUES (:id_utilizator, :username, :email, 'Angajator', :id_companie)`,
+      {
+        id_utilizator: userId,
+        username,
+        email: cerere.EMAIL,
+        id_companie: cerere.ID_COMPANIE,
+      },
+      { autoCommit: true }
+    );
+
+    // 3. Generezi token
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+    // 4. Salvezi token
+    await executeQuery(
+      `INSERT INTO reset_tokens (id_utilizator, token, expires_at)
+       VALUES (:id_utilizator, :token, :expires_at)`,
+      {
+        id_utilizator: userId,
+        token,
+        expires_at: expiresAt,
+      },
+      { autoCommit: true },
+    );
+
+    // 5. Update cerere
+    await executeQuery(
+      `UPDATE CereriAngajatori SET status = 'Approved' WHERE id_cerere = :id`,
+      [id_cerere],
+      { autoCommit: true },
+    );
+
+    // 6. Link setare parolă
+    const link = `http://localhost:3000/change-password?token=${token}`;
+
+    // 7. Trimite email
+    await sendSetPasswordEmail(cerere.EMAIL, link);
+
+    res.json({ message: "Cererea a fost aprobată și email trimis." });
+  } catch (err) {
+    console.error("Eroare la aprobarea cererii:", err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
+// Respingere cerere angajator
+router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
+  const id_cerere = req.params.id;
+
+  try {
+    const result = await executeQuery(
+      `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
+      [id_cerere]
+    );
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Cererea nu a fost găsită." });
+    }
+
+    await executeQuery(
+      `UPDATE CereriAngajatori SET status = 'Rejected' WHERE id_cerere = :id`,
+      [id_cerere],
+      { autoCommit: true },
+    );
+
+    // Trimite emailul de decizie către angajator
+    await sendEmployerDecisionEmail(
+      result[0].EMAIL,
+      "rejected",
+      req.body.motiv || "Cererea a fost respinsă fără un motiv specificat.",
+    );
+
+    res.json({ message: "Cererea a fost respinsă." });
+  } catch (err) {
+    console.error("Eroare respingere:", err);
     res.status(500).json({ message: "Eroare server." });
   }
 });

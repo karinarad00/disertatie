@@ -1,143 +1,200 @@
 const nodemailer = require("nodemailer");
 
-// Inițializare transporter cu verificare SMTP
+// Transporter
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT),
-  secure: Number(process.env.EMAIL_PORT) === 465, // true doar dacă e port 465
+  secure: Number(process.env.EMAIL_PORT) === 465,
   auth: {
     user: process.env.ADMIN_EMAIL,
     pass: process.env.EMAIL_PASS,
   },
 });
 
-// Verificare conexiune SMTP (opțional, dar util în dezvoltare)
+// Verify SMTP
 transporter.verify((error, success) => {
-  if (error) {
-    console.error("Eroare SMTP:", error);
-  } else {
-    console.log("Conexiune SMTP funcțională:", success);
-  }
+  if (error) console.error("Eroare SMTP:", error);
+  else console.log("Conexiune SMTP funcțională:", success);
 });
 
-// Email: Resetare parolă
+// Reusable styles (email-safe)
+const styles = {
+  container: "font-family: Arial, sans-serif; color:#333; line-height:1.6;",
+  title: "font-size:18px; font-weight:bold; margin-bottom:10px;",
+  btnPrimary:
+    "display:inline-block;padding:10px 16px;background:#28a745;color:#fff;text-decoration:none;border-radius:6px;",
+  btnDanger:
+    "display:inline-block;padding:10px 16px;background:#dc3545;color:#fff;text-decoration:none;border-radius:6px;",
+  btnBlue:
+    "display:inline-block;padding:10px 16px;background:#007bff;color:#fff;text-decoration:none;border-radius:6px;",
+  card: "background:#f9f9f9;padding:12px;border-radius:6px;margin:10px 0;border:1px solid #eee;",
+};
+
+// RESET PASSWORD
 async function sendResetEmail(toEmail, resetLink) {
   const mailOptions = {
-    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    from: `"JobFinder" <${process.env.ADMIN_EMAIL}>`,
     to: toEmail,
     subject: "Resetare parolă",
-    text: `Ai solicitat resetarea parolei. Folosește acest link: ${resetLink}`,
     html: `
-      <p>Bună,</p>
-      <p>Ai solicitat resetarea parolei. Apasă pe linkul de mai jos pentru a-ți reseta parola:</p>
-      <a href="${resetLink}">Resetează parola</a>
-      <p>Dacă nu ai făcut tu această solicitare, ignoră acest mesaj.</p>
+      <div style="${styles.container}">
+        <p style="${styles.title}">Resetare parolă</p>
+        <p>Ai solicitat resetarea parolei. Apasă butonul de mai jos:</p>
+
+        <p>
+          <a href="${resetLink}" style="${styles.btnBlue}">
+            Resetează parola
+          </a>
+        </p>
+
+        <p style="font-size:12px;color:#777;">
+          Dacă nu ai solicitat acest lucru, ignoră acest email.
+        </p>
+      </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-// Email: Confirmare angajator
+// EMPLOYER REQUEST CONFIRMATION
 async function sendEmployerRequestEmail(toEmail, contactName) {
   const mailOptions = {
-    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    from: `"JobFinder" <${process.env.ADMIN_EMAIL}>`,
     to: toEmail,
     subject: "Cerere cont angajator înregistrată",
-    text: `Cererea ta pentru un cont de angajator a fost înregistrată și se află în curs de aprobare.`,
     html: `
-      <p>Bună${contactName ? `, ${contactName}` : ""},</p>
-      <p>Cererea ta pentru un cont de angajator a fost înregistrată cu succes și se află în curs de aprobare.</p>
-      <p>Vei primi un răspuns în cel mai scurt timp.</p>
-      <p>Mulțumim!</p>
+      <div style="${styles.container}">
+        <p style="${styles.title}">
+          Bună${contactName ? `, ${contactName}` : ""} 👋
+        </p>
+
+        <p>
+          Cererea ta pentru un cont de angajator a fost înregistrată cu succes și se află în curs de aprobare.
+        </p>
+
+        <div style="${styles.card}">
+          Vei primi un răspuns în cel mai scurt timp.
+        </div>
+
+        <p>Mulțumim!</p>
+      </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-// Email: Notificare către admin
+// ADMIN NOTIFICATION (IMPORTANT: FIXED LAYOUT)
 async function sendAdminNotificationEmail(adminEmail, cerereInfo) {
-  const { id_cerere, id_companie, email, nume_contact, telefon, descriere } =
-    cerereInfo;
+  const {
+    id_cerere,
+    denumire_companie,
+    email,
+    nume_contact,
+    telefon,
+    descriere,
+  } = cerereInfo;
 
   const approvalLink = `http://localhost:3000/cerere/${id_cerere}/aproba`;
   const rejectionLink = `http://localhost:3000/cerere/${id_cerere}/respinge`;
 
   const mailOptions = {
-    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    from: `"JobFinder" <${process.env.ADMIN_EMAIL}>`,
     to: adminEmail,
     subject: "Cerere nouă angajator în platformă",
-    text: `
-      Cerere ID: ${id_cerere}
-      Companie ID: ${id_companie}
-      Nume contact: ${nume_contact || "-"}
-      Email: ${email}
-      Telefon: ${telefon || "-"}
-      Descriere: ${descriere || "-"}
-      Aprobare: ${approvalLink}
-    `,
     html: `
-      <p>A fost înregistrată o nouă cerere de cont angajator:</p>
-      <ul>
-        <li><strong>ID Cerere:</strong> ${id_cerere}</li>
-        <li><strong>Companie ID:</strong> ${id_companie}</li>
-        <li><strong>Nume contact:</strong> ${nume_contact || "-"}</li>
-        <li><strong>Email:</strong> ${email}</li>
-        <li><strong>Telefon:</strong> ${telefon || "-"}</li>
-        <li><strong>Descriere:</strong> ${descriere || "-"}</li>
-      </ul>
-      <p>
-        <a href="${approvalLink}" style="padding: 10px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;">
-          Aprobă cererea
-        </a>
-        <a href="${rejectionLink}" style="padding: 10px 15px; color: white; background-color: red; text-decoration: none; border-radius: 4px;">Respinge cererea</a>
-      </p>
+      <div style="${styles.container}">
+        <p style="${styles.title}">Nouă cerere de angajator</p>
+
+        <div style="${styles.card}">
+          <p><strong>Companie:</strong> ${denumire_companie}</p>
+          <p><strong>Nume contact:</strong> ${nume_contact || "-"}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Telefon:</strong> ${telefon || "-"}</p>
+          <p><strong>Descriere:</strong> ${descriere || "-"}</p>
+        </div>
+
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="padding-right:10px;">
+              <a href="${approvalLink}" style="${styles.btnPrimary}">
+                Aprobă
+              </a>
+            </td>
+            <td>
+              <a href="${rejectionLink}" style="${styles.btnDanger}">
+                Respinge
+              </a>
+            </td>
+          </tr>
+        </table>
+      </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-// Email: Decizie aprobare/respingere cerere angajator
+// DECISION EMAIL
 async function sendEmployerDecisionEmail(toEmail, status, motiv) {
-  const subject = `Cererea ta a fost ${status === "approved" ? "aprobată" : "respinsă"}`;
-  const html = `
-    <p>Bună,</p>
-    <p>Cererea ta de cont angajator a fost <strong>${status === "approved" ? "aprobată" : "respinsă"}</strong>.</p>
-    ${motiv ? `<p><strong>Motiv:</strong> ${motiv}</p>` : ""}
-    <p>Îți mulțumim pentru interesul acordat platformei noastre!</p>
-  `;
+  const isApproved = status === "approved";
 
   const mailOptions = {
-    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    from: `"JobFinder" <${process.env.ADMIN_EMAIL}>`,
     to: toEmail,
-    subject,
-    html,
+    subject: `Cererea ta a fost ${isApproved ? "aprobată" : "respinsă"}`,
+    html: `
+      <div style="${styles.container}">
+        <p style="${styles.title}">
+          Cerere ${isApproved ? "aprobată 🎉" : "respinsă"}
+        </p>
+
+        <p>
+          Cererea ta de cont angajator a fost
+          <strong>${isApproved ? "aprobată" : "respinsă"}</strong>.
+        </p>
+
+        ${
+          motiv
+            ? `<div style="${styles.card}">
+                <strong>Motiv:</strong><br/>${motiv}
+               </div>`
+            : ""
+        }
+
+        <p>Îți mulțumim pentru interes!</p>
+      </div>
+    `,
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-// Email: Setare parolă pentru cont nou (angajator)
+// SET PASSWORD EMAIL
 async function sendSetPasswordEmail(toEmail, setPasswordLink) {
   const mailOptions = {
-    from: `"Platforma TA" <${process.env.ADMIN_EMAIL}>`,
+    from: `"JobFinder" <${process.env.ADMIN_EMAIL}>`,
     to: toEmail,
     subject: "Cont angajator aprobat - setează parola",
-    text: `Contul tău a fost aprobat. Setează parola folosind acest link: ${setPasswordLink}`,
     html: `
-      <p>Bună,</p>
-      <p>Contul tău de angajator a fost <strong>aprobat</strong>.</p>
-      <p>Pentru a-ți activa contul, setează parola accesând linkul de mai jos:</p>
+      <div style="${styles.container}">
+        <p style="${styles.title}">Cont aprobat ✔</p>
 
-      <a href="${setPasswordLink}" 
-         style="padding:10px 15px; background:#007bff; color:white; text-decoration:none; border-radius:5px;">
-         Setează parola
-      </a>
+        <p>
+          Contul tău de angajator a fost aprobat. Pentru activare, setează parola:
+        </p>
 
-      <p>Linkul este valabil pentru o perioadă limitată.</p>
-      <p>Dacă nu ai făcut tu această cerere, ignoră acest email.</p>
+        <p>
+          <a href="${setPasswordLink}" style="${styles.btnBlue}">
+            Setează parola
+          </a>
+        </p>
+
+        <p style="font-size:12px;color:#777;">
+          Linkul este valabil pentru o perioadă limitată.
+        </p>
+      </div>
     `,
   };
 
