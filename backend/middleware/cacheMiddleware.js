@@ -2,16 +2,18 @@ const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 3600 });
 
 const cacheMiddleware = (req, res, next) => {
-  if (req.method !== "GET") return next();
+  // Allow caching for GET and POST (for AI analysis routes)
+  if (req.method !== "GET" && req.method !== "POST") return next();
 
   // Do not cache sensitive user-specific routes
   if (req.originalUrl.includes("/api/users/profil") || req.originalUrl.includes("/api/favorites")) {
     return next();
   }
 
-  // Include the Authorization header in the cache key to separate data by user
+  // Include the Authorization header and request body in the cache key
   const authHeader = req.headers.authorization || "";
-  const key = req.originalUrl + authHeader;
+  const bodyKey = JSON.stringify(req.body);
+  const key = req.originalUrl + authHeader + bodyKey;
 
   const cached = myCache.get(key);
 

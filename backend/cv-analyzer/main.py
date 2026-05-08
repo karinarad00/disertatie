@@ -6,6 +6,8 @@ import json
 from typing import List
 
 import numpy as np
+import faiss
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -38,26 +40,29 @@ app.add_middleware(
 )
 
 # ---------------- Helper: call LLM ----------------
-def ask_llm(prompt: str):
+def ask_llm(prompt: str, system_message: str = "Ești un asistent util, expert în HR și recrutare."):
     chat = client.chat.completions.create(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        response_format={"type": "json_object"} if "JSON" in prompt else None
     )
     return chat.choices[0].message.content
 
 # ---------------- Helper: parse LLM JSON safely ----------------
 def parse_llm_json(response: str):
-    match = re.search(r'```json(.*?)```', response, re.DOTALL)
-    if match:
-        json_text = match.group(1).strip()
-    else:
+    try:
+        # Încearcă direct json.loads
+        return json.loads(response)
+    except json.JSONDecodeError:
+        # Fallback la regex dacă LLM-ul a adăugat text extra
         match = re.search(r'\{.*\}', response, re.DOTALL)
         if match:
-            json_text = match.group(0)
-        else:
-            raise ValueError("No JSON found in LLM response")
-    return json.loads(json_text)
+            return json.loads(match.group(0))
+        raise ValueError("No JSON found in LLM response")
 
 # ---------------- Job formatting ----------------
 def format_job_for_ui(job, idx):
@@ -85,27 +90,29 @@ def analyze_cv(req: CVRequest):
 
         text = extract_text_from_pdf(path)
         os.unlink(path)
-        text = text[:4000]
+        text = text[:6000] # Mărim limita de text pentru analiză mai bună
 
         analysis_prompt = f"""
-You are a professional CV reviewer.
-
-Analyze the following CV and return STRICT JSON:
+Ești un expert în analiza de CV-uri. Analizează textul extras din CV și oferă feedback în LIMBA ROMÂNĂ.
+Returnează un obiect JSON valid cu următoarea structură:
 
 {{
-"strengths": [],
-"weaknesses": [],
-"improvements": [],
-"atsCompatibility": 0,
-"impact": 0,
-"readability": 0,
-"score": 0
+  "strengths": ["punct tare 1", "punct tare 2"],
+  "weaknesses": ["punct slab 1", "punct slab 2"],
+  "improvements": ["sugestie de îmbunătățire 1", "sugestie 2"],
+  "recommendations": "O concluzie scurtă și profesională despre profilul candidatului.",
+  "atsCompatibility": 0, 
+  "impact": 0, 
+  "readability": 0, 
+  "score": 0 
 }}
 
-CV:
+Scorurile (atsCompatibility, impact, readability, score) trebuie să fie între 0 și 100.
+
+CV Text:
 {text}
 """
-        raw_response = ask_llm(analysis_prompt)
+        raw_response = ask_llm(analysis_prompt, system_message="Ești un expert HR care returnează STRICT JSON.")
 
         try:
             data = parse_llm_json(raw_response)
@@ -114,45 +121,54 @@ CV:
                 "strengths": [],
                 "weaknesses": [],
                 "improvements": [],
-                "atsCompatibility": 75,
-                "impact": 75,
-                "readability": 75,
-                "score": 75
+                "recommendations": "Eroare la procesarea analizei detaliate.",
+                "atsCompatibility": 70,
+                "impact": 70,
+                "readability": 70,
+                "score": 70
             }
 
-        for key in ["atsCompatibility", "impact", "readability", "score"]:
-            value = data.get(key, 75)
-            if value <= 1:
-                value = int(value * 100)
-            data[key] = min(max(int(value), 0), 100)
+        # Validare scoruri și calculare media ponderată
+        ats = data.get("atsCompatibility", 70)
+        impact = data.get("impact", 70)
+        readability = data.get("readability", 70)
 
-        translate_prompt = f"""
-Translate the following CV analysis into Romanian:
+        def clean_score(val):
+            try:
+                if isinstance(val, str):
+                    val = int(re.sub(r'[^0-9]', '', val))
+                if val <= 1 and val > 0:
+                    val = int(val * 100)
+                return min(max(int(val), 0), 100)
+            except:
+                return 70
 
-Analysis JSON:
-{json.dumps(data)}
-"""
-        romanian_text = ask_llm(translate_prompt)
+        ats = clean_score(ats)
+        impact = clean_score(impact)
+        readability = clean_score(readability)
+
+        # Formula ponderată: ATS (40%) + Impact (35%) + Readability (25%)
+        final_score = int((ats * 0.4) + (impact * 0.35) + (readability * 0.25))
 
         return {
-            "recommendations": romanian_text,
-            "atsCompatibility": data["atsCompatibility"],
-            "impact": data["impact"],
-            "readability": data["readability"],
-            "score": data["score"],
+            "recommendations": data.get("recommendations", ""),
+            "atsCompatibility": ats,
+            "impact": impact,
+            "readability": readability,
+            "score": final_score,
             "strengths": data.get("strengths", []),
             "weaknesses": data.get("weaknesses", []),
             "suggestions": data.get("improvements", [])
         }
 
     except Exception as e:
+        print(f"Error in analyze_cv: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ---------------- JOB MATCHING cu matchScore LLM ----------------
 @app.post("/suggestions")
 def job_suggestions(req: CVRequest):
     try:
-        # Download CV PDF
         pdf = requests.get(req.cvUrl).content
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf)
@@ -161,59 +177,49 @@ def job_suggestions(req: CVRequest):
         cv_text = extract_text_from_pdf(path)[:4000]
         os.unlink(path)
 
-        top_k=10
-        # FAISS search - deja sortează descrescător după relevanță
+        top_k = 10
         top_jobs = search_jobs(cv_text, top_k=top_k)
         jobs_with_scores = []
 
         for idx, job in enumerate(top_jobs):
             job_copy = job.copy()
 
-            # LLM matchScore
-            if idx < top_k:
+            if idx < 5: # Calculăm matchScore detaliat doar pentru primele 5
                 job_desc = job.get("DESCRIERE") or job.get("description") or ""
                 llm_prompt = f"""
-Ești un expert HR. Returnează STRICT JSON:
+Evaluează potrivirea dintre acest CV și Job Description.
+Returnează un obiect JSON cu scorul de compatibilitate (matchScore) între 0 și 100.
 
 {{
-"matchScore": 0   # procent 0-100
+  "matchScore": 85
 }}
 
-Job description:
-{job_desc}
-
-Candidate CV:
-{cv_text}
+Job: {job_desc[:1000]}
+CV: {cv_text[:1000]}
 """
                 try:
-                    llm_response = ask_llm(llm_prompt)
+                    llm_response = ask_llm(llm_prompt, system_message="Ești un expert HR. Returnează STRICT JSON.")
                     llm_data = parse_llm_json(llm_response)
-                    match_score = int(min(max(llm_data.get("matchScore", 0), 0), 100))
+                    match_score = int(llm_data.get("matchScore", 0))
                 except Exception:
-                    match_score = 0
+                    match_score = int(job.get("score", 0) * 100) if job.get("score") else 50
             else:
-                match_score = 0
+                # Pentru restul, folosim scorul din FAISS convertit
+                match_score = int(job.get("score", 0) * 100) if job.get("score") else 40
 
-            job_copy["matchScore"] = match_score
+            job_copy["matchScore"] = min(max(match_score, 0), 100)
             jobs_with_scores.append(job_copy)
 
-        # Formatează pentru UI
         formatted_jobs = [format_job_for_ui(job, idx) for idx, job in enumerate(jobs_with_scores)]
-
         return {
             "jobs": formatted_jobs,
-            "explanation": "Joburile sunt ordonate descrescător după relevanță, matchScore calculat de LLM pentru primele k joburi."
+            "explanation": "Joburile sunt ordonate după relevanță semantică și analiză AI."
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     
 # ---------------- JOB-TO-CV MATCHING ----------------
-from pydantic import BaseModel
-import faiss
-
 class JobCVMatchRequest(BaseModel):
     jobId: int
     cvUrls: List[str]
@@ -234,37 +240,36 @@ def job_cv_match(req: JobCVMatchRequest):
 
         results = []
         for cv_url in req.cvUrls:
-            pdf = requests.get(cv_url).content
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                tmp.write(pdf)
-                path = tmp.name
+            try:
+                pdf = requests.get(cv_url).content
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(pdf)
+                    path = tmp.name
 
-            cv_text = extract_text_from_pdf(path)[:4000]
-            os.unlink(path)
+                cv_text = extract_text_from_pdf(path)[:4000]
+                os.unlink(path)
 
-            cv_vector = embed(cv_text).reshape(1, -1)
-            similarity = float(np.dot(job_vector, cv_vector.T) / 
-                               (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
-            score = round(similarity * 100, 2)
+                cv_vector = embed(cv_text).reshape(1, -1)
+                similarity = float(np.dot(job_vector, cv_vector.T) / 
+                                (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
+                score = round(similarity * 100, 2)
 
-            explanation_prompt = f"""
-Job description:
+                explanation_prompt = f"""
+Explică în LIMBA ROMÂNĂ de ce acest candidat se potrivește pentru job.
+Fii concis (maxim 3 fraze).
 
-{job_text}
-
-Candidate CV:
-
-{cv_text}
-
-Explain briefly why this candidate fits the job.
+Job: {job_text[:500]}
+CV: {cv_text[:500]}
 """
-            explanation = ask_llm(explanation_prompt)
+                explanation = ask_llm(explanation_prompt, system_message="Ești un recruiter expert. Oferă explicații profesionale în română.")
 
-            results.append({
-                "cvUrl": cv_url,
-                "fitScore": score,
-                "explanation": explanation
-            })
+                results.append({
+                    "cvUrl": cv_url,
+                    "fitScore": score,
+                    "explanation": explanation
+                })
+            except Exception as e:
+                print(f"Error processing CV {cv_url}: {e}")
 
         results = sorted(results, key=lambda x: x["fitScore"], reverse=True)
         return {

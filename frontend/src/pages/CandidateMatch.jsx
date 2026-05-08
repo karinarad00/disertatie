@@ -41,9 +41,12 @@ export default function CandidateMatch() {
 
         const cvUrls = appData.map((c) => c.CV_URL_APLICARE);
 
-        const matchRes = await fetch("http://localhost:8000/job-cv-match", {
+        const matchRes = await fetch("http://localhost:5000/api/cv/job-cv-match", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
           body: JSON.stringify({ jobId: parseInt(id), cvUrls }),
         });
         const matchData = await matchRes.json();

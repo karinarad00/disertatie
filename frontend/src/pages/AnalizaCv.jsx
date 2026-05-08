@@ -130,10 +130,6 @@ const AnalizaCv = () => {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Scor CV</h2>
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span>Scor general</span>
-                  <span className="font-semibold">{scores.score}%</span>
-                </div>
-                <div className="flex justify-between">
                   <span>ATS</span>
                   <span className="font-semibold">
                     {scores.atsCompatibility}%
@@ -146,6 +142,10 @@ const AnalizaCv = () => {
                 <div className="flex justify-between">
                   <span>Readability</span>
                   <span className="font-semibold">{scores.readability}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Scor general</span>
+                  <span className="font-semibold block">{scores.score}%</span>
                 </div>
               </div>
 
@@ -167,6 +167,9 @@ const AnalizaCv = () => {
                   <strong>Scor general:</strong> Media ponderată a celor trei
                   scoruri anterioare.
                 </p>
+                <span className="text-right text-gray-400 block -mt-1 italic">
+                  Formula: 40% ATS + 35% Impact + 25% Readability
+                </span>
               </div>
             </div>
 

@@ -225,4 +225,21 @@ router.post("/suggestions", cacheMiddleware, async (req, res) => {
   }
 });
 
+// ================= JOB-CV MATCH =================
+router.post("/job-cv-match", cacheMiddleware, async (req, res) => {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/job-cv-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Eroare job-cv-match:", err);
+    res.status(500).json({ error: "Eroare la matching." });
+  }
+});
+
 module.exports = router;
