@@ -20,7 +20,7 @@ export function FavoriteJobCard({ job, onDelete, onView, onNavigate }) {
           )}
           {job.DATA_POSTARII && (
             <span>
-              Posted:{" "}
+              Postat la:{" "}
               {new Date(job.DATA_POSTARII).toLocaleDateString("ro-RO", {
                 day: "2-digit",
                 month: "2-digit",

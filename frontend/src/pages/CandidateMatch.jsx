@@ -16,9 +16,9 @@ export default function CandidateMatch() {
   useEffect(() => {
     if (!user.subscriptie_angajatori) {
       alert(
-        "Trebuie să achiziționați Job Matching pentru a accesa această pagină.",
+        "Trebuie să achiziționați Potrivire Joburi pentru a accesa această pagină.",
       );
-      return navigate("/job-matching");
+      return navigate("/matching");
     }
 
     const fetchData = async () => {
@@ -87,10 +87,10 @@ export default function CandidateMatch() {
       <div className="text-center mt-10">
         <p className="text-red-600 mb-4">Jobul nu a fost găsit.</p>
         <button
-          onClick={() => navigate("/job-matching")}
+          onClick={() => navigate("/matching")}
           className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
-          <ArrowLeft className="size-4" /> Înapoi la Job Matching
+          <ArrowLeft className="size-4" /> Înapoi la Potrivire Joburi
         </button>
       </div>
     );
@@ -102,10 +102,10 @@ export default function CandidateMatch() {
           Nimeni nu a aplicat încă pentru acest job. Verifică mai târziu.
         </p>
         <button
-          onClick={() => navigate("/job-matching")}
+          onClick={() => navigate("/matching")}
           className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
-          <ArrowLeft className="size-4" /> Înapoi la Job Matching
+          <ArrowLeft className="size-4" /> Înapoi la Potrivire Joburi
         </button>
       </div>
     );
@@ -119,7 +119,7 @@ export default function CandidateMatch() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="size-5" />
-          Înapoi la Job Matching
+          Înapoi la Potrivire Joburi
         </button>
 
         {/* Restul componentei CandidateMatch cu afișarea candidaților */}

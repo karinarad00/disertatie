@@ -74,7 +74,7 @@ export default function JobMatching() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Target className="size-8 text-green-600" />
-            <h1 className="text-3xl font-bold">Job Matching</h1>
+            <h1 className="text-3xl font-bold">Potrivire Joburi</h1>
           </div>
           <p className="text-gray-600">
             Acces complet la procesul automat de matching pentru toate joburile.

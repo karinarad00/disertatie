@@ -3,7 +3,7 @@ import { TrendingUp, Sparkles } from "lucide-react";
 export function CVSection({ user, onCheckout, openModal }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">My CV / Resume</h2>
+      <h2 className="text-2xl font-bold text-gray-900">CV-ul Meu</h2>
 
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50 flex flex-col items-center justify-center">
         {user.cv_url ? (
@@ -11,7 +11,7 @@ export function CVSection({ user, onCheckout, openModal }) {
             src={`http://localhost:5000/api/cv/preview_cv?cv_url=${encodeURIComponent(
               user.cv_url,
             )}`}
-            title="Preview CV"
+            title="Previzualizare CV"
             className="w-full h-[20rem] border rounded"
           />
         ) : (

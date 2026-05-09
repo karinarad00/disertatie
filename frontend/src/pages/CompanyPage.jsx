@@ -96,10 +96,6 @@ export default function CompanyProfile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow p-4 mb-6">
-        <h1 className="text-2xl font-bold">{company.denumire_companie}</h1>
-      </header>
-
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Company Info */}
         <div className="lg:col-span-1 space-y-6">
@@ -157,7 +153,7 @@ export default function CompanyProfile() {
         <div className="lg:col-span-2 space-y-6">
           {/* Actions */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+            <h2 className="text-xl font-bold mb-4">Acțiuni Rapide</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
@@ -165,7 +161,7 @@ export default function CompanyProfile() {
                 className="flex flex-col items-center gap-3 p-6 bg-blue-600 text-white rounded-lg"
               >
                 <Plus className="size-8" />
-                <span>Create New Job</span>
+                <span>Creează Job Nou</span>
               </button>
 
               <button
@@ -173,7 +169,7 @@ export default function CompanyProfile() {
                 className="flex flex-col items-center gap-3 p-6 bg-purple-600 text-white rounded-lg"
               >
                 <TrendingUp className="size-8" />
-                <span>Promote a Job</span>
+                <span>Promovează Job</span>
               </button>
 
               <button
@@ -181,14 +177,14 @@ export default function CompanyProfile() {
                 className="flex flex-col items-center gap-3 p-6 bg-green-600 text-white rounded-lg"
               >
                 <Users className="size-8" />
-                <span>Get Candidate Match</span>
+                <span>Găsește Candidați</span>
               </button>
             </div>
           </div>
 
           {/* Jobs List */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">Active Job Postings</h2>
+            <h2 className="text-xl font-bold mb-4">Postări Active</h2>
 
             <div className="space-y-4">
               {jobs.map((job) => (
@@ -202,11 +198,13 @@ export default function CompanyProfile() {
                         setEditModalOpen(true);
                       }}
                     >
-                      Edit
+                      Editează
                     </button>
 
-                    <button onClick={() => navigate(`/job/${job.id}`)}>
-                      View
+                    <button
+                      onClick={() => navigate(`/job/${job.id}`)}
+                    >
+                      Vezi
                     </button>
                   </div>
                 </div>

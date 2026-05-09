@@ -154,11 +154,11 @@ const JobDetailsPage = () => {
                 </div>
               </div>
               <div className="flex gap-4">
-                <div title={!user ? "Trebuie să fii logat pentru a aplica" : ""}>
+                <div title={!user ? "Trebuie să fii autentificat pentru a aplica" : ""}>
                   <button
                     onClick={handleApply}
                     disabled={!user || applying}
-                    className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {applying ? "Se aplică..." : "Aplică acum"}
                   </button>

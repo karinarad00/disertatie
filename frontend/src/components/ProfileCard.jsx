@@ -34,7 +34,7 @@ export function ProfileCard({ user, favoriteJobsCount, onEdit }) {
           {user.experience && (
             <div className="flex items-center gap-3">
               <Briefcase className="size-5 text-gray-400" />
-              <span className="text-sm">{user.experience} experience</span>
+              <span className="text-sm">{user.experience} experiență</span>
             </div>
           )}
         </div>
@@ -48,22 +48,22 @@ export function ProfileCard({ user, favoriteJobsCount, onEdit }) {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Stats</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Statistici</h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">Profile Views</span>
+            <span className="text-gray-600">Vizualizări Profil</span>
             <span className="font-semibold text-blue-600">
               {user.views || 0}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">Applications</span>
+            <span className="text-gray-600">Aplicări</span>
             <span className="font-semibold text-blue-600">
               {user.applications || 0}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">Saved Jobs</span>
+            <span className="text-gray-600">Joburi Salvate</span>
             <span className="font-semibold text-blue-600">
               {favoriteJobsCount}
             </span>

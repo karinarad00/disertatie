@@ -140,7 +140,7 @@ const AnalizaCv = () => {
                   <span className="font-semibold">{scores.impact}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Readability</span>
+                  <span>Lizibilitate</span>
                   <span className="font-semibold">{scores.readability}%</span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -160,7 +160,7 @@ const AnalizaCv = () => {
                   realizările și valoarea candidatului.
                 </p>
                 <p>
-                  <strong>Readability:</strong> Ușurința de citire și structură
+                  <strong>Lizibilitate:</strong> Ușurința de citire și structură
                   a CV-ului.
                 </p>
                 <p>
@@ -168,7 +168,7 @@ const AnalizaCv = () => {
                   scoruri anterioare.
                 </p>
                 <span className="text-right text-gray-400 block -mt-1 italic">
-                  Formula: 40% ATS + 35% Impact + 25% Readability
+                  Formula: 40% ATS + 35% Impact + 25% Lizibilitate
                 </span>
               </div>
             </div>

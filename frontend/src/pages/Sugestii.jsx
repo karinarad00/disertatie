@@ -120,7 +120,7 @@ const Sugestii = () => {
                     <div className="absolute -left-3 -top-3 z-10">
                       <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1">
                         <Target className="size-4" />
-                        {job.matchScore || "N/A"}% Match
+                        {job.matchScore || "N/A"}% Potrivire
                       </div>
                     </div>
                     <JobCard job={job} />
@@ -156,7 +156,7 @@ const Sugestii = () => {
             {/* Match Criteria */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="font-semibold text-gray-900 mb-4">
-                Match Criteria (100%)
+                Criterii de Potrivire (100%)
               </h3>
               <div className="space-y-4">
                 {[
