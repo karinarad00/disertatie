@@ -2,8 +2,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, ExternalLink } from "lucide-react";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect as useReactEffect } from "react";
 
 // =========================
 // ICONS
@@ -36,15 +40,66 @@ const CurrentLocationMarker = ({ position }) => {
 };
 
 // =========================
-// MAP HELPER COMPONENT
+// MAP VIEW CONTROLLER
 // =========================
 function ChangeView({ center, zoom }) {
   const map = useMap();
+
   useEffect(() => {
     if (center) {
       map.setView(center, zoom || map.getZoom());
     }
   }, [center, zoom, map]);
+
+  return null;
+}
+
+// =========================
+// CLUSTER LAYER (FIX)
+// =========================
+function ClusterLayer({ markers }) {
+  const map = useMap();
+  const clusterRef = useRef(null);
+
+  useEffect(() => {
+    const L = require("leaflet");
+
+    const clusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      spiderfyOnMaxZoom: false,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+    });
+
+    clusterRef.current = clusterGroup;
+    map.addLayer(clusterGroup);
+
+    return () => {
+      map.removeLayer(clusterGroup);
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (!clusterRef.current) return;
+
+    clusterRef.current.clearLayers();
+
+    markers.forEach((loc) => {
+      const marker = L.marker([loc.lat, loc.lng], { icon: customIcon });
+
+      marker.bindPopup(`
+        <div style="min-width:160px">
+          <strong>${loc.titlu}</strong><br/>
+          <b>${loc.company}</b><br/>
+          <span>${loc.address}</span><br/>
+          <a href="/job/${loc.id_job}" target="_self">Vezi detalii</a>
+        </div>
+      `);
+
+      clusterRef.current.addLayer(marker);
+    });
+  }, [markers]);
+
   return null;
 }
 
@@ -59,8 +114,6 @@ export default function MapPage() {
   const [currentPosition, setCurrentPosition] = useState(null);
   const [mapCenter, setMapCenter] = useState([45.9432, 24.9668]);
   const [zoom, setZoom] = useState(7);
-
-  const markerRefs = useRef({});
 
   // =========================
   // FETCH LOCATIONS
@@ -81,6 +134,7 @@ export default function MapPage() {
             lat: parseFloat(loc.LAT),
             lng: parseFloat(loc.LNG),
           }));
+
         setLocations(cleaned);
         setLoading(false);
       })
@@ -96,20 +150,19 @@ export default function MapPage() {
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCurrentPosition(pos);
+        (pos) => {
+          setCurrentPosition({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
         },
-        (error) => console.warn("Nu s-a putut obține locația curentă:", error),
+        (err) => console.warn("Geo error:", err),
       );
     }
   }, []);
 
   // =========================
-  // DISTANCE CALC
+  // DISTANCE
   // =========================
   const distanceInKm = (lat1, lng1, lat2, lng2) => {
     const R = 6371;
@@ -150,16 +203,8 @@ export default function MapPage() {
   ];
 
   const handleCardClick = (loc) => {
-    const markerKey = `${loc.id_job}-${loc.id_oras}`;
-    const marker = markerRefs.current[markerKey];
-
-    // Center the map on the location and zoom in
     setMapCenter([loc.lat, loc.lng]);
-    setZoom(15); // Deeper zoom for "selecting" the location
-
-    if (marker) {
-      marker.openPopup();
-    }
+    setZoom(15);
   };
 
   // =========================
@@ -171,9 +216,9 @@ export default function MapPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* MAP */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md h-[600px] overflow-hidden border border-gray-200">
+            <div className="bg-white rounded-lg shadow-md h-[600px] overflow-hidden border">
               {loading ? (
-                <div className="h-full flex items-center justify-center text-gray-500">
+                <div className="h-full flex items-center justify-center">
                   Se încarcă harta...
                 </div>
               ) : (
@@ -187,43 +232,16 @@ export default function MapPage() {
                   <ChangeView center={mapCenter} zoom={zoom} />
 
                   {currentPosition && (
-                    <CurrentLocationMarker position={currentPosition} />
+                    <Marker
+                      position={currentPosition}
+                      icon={currentLocationIcon}
+                    >
+                      <Popup>Locația ta curentă</Popup>
+                    </Marker>
                   )}
 
-                  {filteredLocations.map((loc, idx) => {
-                    const markerKey = `${loc.id_job}-${loc.id_oras}`;
-                    return (
-                      <Marker
-                        key={markerKey}
-                        position={[loc.lat, loc.lng]}
-                        icon={customIcon}
-                        ref={(el) => (markerRefs.current[markerKey] = el)}
-                      >
-                        <Popup>
-                          <div className="p-1">
-                            <h3 className="font-bold text-sm mb-1">
-                              {loc.titlu}
-                            </h3>
-                            <p className="text-gray-700 font-medium text-xs !mt-0 !mb-1">
-                              {loc.company}
-                            </p>
-                            <p className="text-gray-500 text-xs !mt-0 !mb-3 flex items-center gap-1">
-                              <MapPin className="size-3 flex-shrink-0" />
-                              {loc.address}
-                            </p>
-                            <div className="flex justify-end">
-                              <Link
-                                to={`/job/${loc.id_job}`}
-                                className="px-4 py-2 bg-blue-600 !text-white rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                Vezi detalii
-                              </Link>
-                            </div>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    );
-                  })}
+                  {/* ✅ CLUSTER FIX */}
+                  <ClusterLayer markers={filteredLocations} />
                 </MapContainer>
               )}
             </div>
@@ -231,77 +249,53 @@ export default function MapPage() {
 
           {/* LIST */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold">
               Job Locations ({filteredLocations.length})
             </h2>
 
-            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-2 custom-scrollbar">
-              {filteredLocations.length > 0 ? (
-                filteredLocations.map((loc, idx) => (
-                  <div
-                    key={`${loc.id_job}-${loc.id_oras}-${idx}`}
-                    onClick={() => handleCardClick(loc)}
-                    className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-all cursor-pointer border border-gray-200 hover:border-blue-400 group"
-                  >
-                    <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {loc.titlu}
-                    </h3>
-                    <p className="text-sm text-gray-700 font-medium mt-0.5">
-                      {loc.company}
-                    </p>
-
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
-                      <MapPin className="size-3 flex-shrink-0" />
-                      <span className="truncate">{loc.address}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 text-gray-500">
-                  Nu s-au găsit joburi în zona selectată.
+            <div className="space-y-3 max-h-[550px] overflow-y-auto">
+              {filteredLocations.map((loc, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => handleCardClick(loc)}
+                  className="bg-white p-4 rounded shadow cursor-pointer hover:shadow-md"
+                >
+                  <h3 className="font-semibold">{loc.titlu}</h3>
+                  <p className="text-sm">{loc.company}</p>
+                  <p className="text-xs flex items-center gap-1">
+                    <MapPin className="size-3" />
+                    {loc.address}
+                  </p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
 
         {/* FILTERS */}
-        <div className="mt-6 p-6 bg-white rounded-lg shadow-md border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">
-            Filtrează Rezultatele
-          </h3>
-          <div className="flex flex-wrap gap-6">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Oraș:</label>
-              <select
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className="p-2 border rounded-md min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="">Toate orașele</option>
-                {uniqueCities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="mt-6 p-6 bg-white rounded-lg shadow-md">
+          <div className="flex gap-6 flex-wrap">
+            <select
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="p-2 border rounded"
+            >
+              <option value="">Toate orașele</option>
+              {uniqueCities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">
-                Distanță maximă (km):
-                {currentPosition ? "" : " (necesită locație activă)"}
-              </label>
-              <input
-                type="number"
-                value={radius}
-                onChange={(e) => setRadius(e.target.value)}
-                className="p-2 w-48 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                min={0}
-                placeholder="Ex: 10"
-                disabled={!currentPosition}
-              />
-            </div>
+            <input
+              type="number"
+              value={radius}
+              onChange={(e) => setRadius(e.target.value)}
+              placeholder="Rază km"
+              className="p-2 border rounded"
+              disabled={!currentPosition}
+            />
           </div>
         </div>
       </main>
