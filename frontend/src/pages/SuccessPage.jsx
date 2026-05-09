@@ -20,9 +20,20 @@ const SuccessPage = () => {
 
     // Cere backend-ului detalii sesiune Stripe
     axios.get(`/api/stripe/session/${sessionId}`)
-      .then((res) => {
-        setProductType(res.data.prodType || "profile");
-        setJobId(res.data.jobId || null);
+      .then(async (res) => {
+        const { prodType, jobId: id } = res.data;
+        setProductType(prodType || "profile");
+        setJobId(id || null);
+
+        // Dacă e promovare job, apelăm ruta de update direct ca fallback/confirmare
+        if (prodType === "promovare_job" && id) {
+          try {
+            await axios.put(`/api/jobs/promote/${id}`);
+            console.log("Job promovat cu succes via manual trigger.");
+          } catch (promoteErr) {
+            console.error("Eroare la trigger manual promovare:", promoteErr);
+          }
+        }
       })
       .catch((err) => {
         console.error("Eroare recuperare sesiune:", err);
@@ -42,8 +53,7 @@ const SuccessPage = () => {
             navigate("/sugestii");
             break;
           case "promovare_job":
-            if (jobId) navigate(`/job/${jobId}`);
-            else navigate("/company");
+            navigate("/promote-job");
             break;
           case "candidate_match":
             if (jobId) navigate(`/candidate-match/${jobId}`);
@@ -90,8 +100,7 @@ const SuccessPage = () => {
                 navigate("/sugestii");
                 break;
               case "promovare_job":
-                if (jobId) navigate(`/job/${jobId}`);
-                else navigate("/company");
+                navigate("/promote-job");
                 break;
               case "candidate_match":
                 if (jobId) navigate(`/candidate-match/${jobId}`);

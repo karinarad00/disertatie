@@ -305,7 +305,7 @@ router.post("/cereri-angajatori", async (req, res) => {
     // Verifică dacă deja există o cerere cu același id_companie și email
     const existingRequest = await executeQuery(
       `SELECT COUNT(*) AS count FROM CereriAngajatori WHERE id_companie = :id_companie AND email = :email`,
-      { id_companie, email }
+      { id_companie, email },
     );
 
     if (existingRequest[0].COUNT > 0) {
@@ -316,7 +316,7 @@ router.post("/cereri-angajatori", async (req, res) => {
 
     // Continuă cu inserarea dacă nu există deja
     const seqResult = await executeQuery(
-      `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`
+      `SELECT seq_cereri_angajatori.NEXTVAL AS nextId FROM dual`,
     );
     const nextId = seqResult[0].NEXTID;
 
@@ -338,9 +338,12 @@ router.post("/cereri-angajatori", async (req, res) => {
     // Obține denumirea companiei pentru email
     const companyResult = await executeQuery(
       `SELECT denumire_companie FROM Companie WHERE id_companie = :id_companie`,
-      { id_companie }
+      { id_companie },
     );
-    const denumire_companie = companyResult.length > 0 ? companyResult[0].DENUMIRE_COMPANIE : "Necunoscută";
+    const denumire_companie =
+      companyResult.length > 0
+        ? companyResult[0].DENUMIRE_COMPANIE
+        : "Necunoscută";
 
     // Trimite emailul de confirmare
     try {
@@ -379,7 +382,7 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
   try {
     const result = await executeQuery(
       `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
-      [id_cerere]
+      [id_cerere],
     );
 
     if (result.length === 0) {
@@ -392,7 +395,9 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
     const username = cerere.EMAIL.split("@")[0];
 
     // 1. Obține noul ID pentru utilizator
-    const seqUser = await executeQuery(`SELECT seq_utilizator.NEXTVAL AS nextId FROM dual`);
+    const seqUser = await executeQuery(
+      `SELECT seq_utilizator.NEXTVAL AS nextId FROM dual`,
+    );
     const userId = seqUser[0].NEXTID;
 
     // 2. Creezi user
@@ -405,7 +410,7 @@ router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
         email: cerere.EMAIL,
         id_companie: cerere.ID_COMPANIE,
       },
-      { autoCommit: true }
+      { autoCommit: true },
     );
 
     // 3. Generezi token
@@ -451,7 +456,7 @@ router.post("/cereri-angajatori/:id/respinge", async (req, res) => {
   try {
     const result = await executeQuery(
       `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,
-      [id_cerere]
+      [id_cerere],
     );
 
     if (result.length === 0) {

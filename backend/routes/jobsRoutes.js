@@ -233,7 +233,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // GET joburi active pentru companie cu numărul de aplicanți
-router.get("/by-company/:id", cacheMiddleware, async (req, res) => {
+router.get("/by-company/:id", async (req, res) => {
   const id = Number(req.params.id);
   const { promotable } = req.query; // optional query param: ?promotable=1
 
@@ -437,6 +437,25 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(`Eroare la actualizarea jobului ${jobId}:`, err);
     res.status(500).json({ error: "Eroare internă la actualizarea jobului" });
+  }
+});
+
+// Promovare Job (manual update after payment)
+router.put("/promote/:id", authenticateToken, async (req, res) => {
+  const jobId = Number(req.params.id);
+
+  try {
+    await executeQuery(
+      `UPDATE Job SET promoted = 1 WHERE id_job = :jobId`,
+      { jobId },
+      { autoCommit: true }
+    );
+
+    cache.del(`/api/jobs/${jobId}`);
+    res.json({ message: "Job promovat cu succes!" });
+  } catch (err) {
+    console.error(`Eroare la promovarea jobului ${jobId}:`, err);
+    res.status(500).json({ error: "Eroare internă la promovarea jobului" });
   }
 });
 

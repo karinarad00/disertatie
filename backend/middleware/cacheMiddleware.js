@@ -5,8 +5,13 @@ const cacheMiddleware = (req, res, next) => {
   // Allow caching for GET and POST (for AI analysis routes)
   if (req.method !== "GET" && req.method !== "POST") return next();
 
-  // Do not cache sensitive user-specific routes
-  if (req.originalUrl.includes("/api/users/profil") || req.originalUrl.includes("/api/favorites")) {
+  // Do not cache sensitive user-specific routes or frequently updated lists
+  if (
+    req.originalUrl.includes("/api/users/profil") ||
+    req.originalUrl.includes("/api/favorites") ||
+    req.originalUrl.includes("/api/jobs/by-company") ||
+    req.originalUrl.includes("/api/stripe/session")
+  ) {
     return next();
   }
 

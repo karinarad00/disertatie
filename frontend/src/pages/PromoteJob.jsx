@@ -13,15 +13,15 @@ export default function PromoteJob() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  const [jobs, setJobs] = useState([]);
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [promotedJobs, setPromotedJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
 
   const MONTHLY_PRICE = 25;
 
-  useEffect(() => {
-
+  const fetchJobs = () => {
     fetch(
-      `http://localhost:5000/api/jobs/by-company/${user.id_companie}?promotable=1`,
+      `http://localhost:5000/api/jobs/by-company/${user.id_companie}`,
       {
         headers: {
           Authorization: `Bearer ${user.token}`,
@@ -30,10 +30,17 @@ export default function PromoteJob() {
     )
       .then((res) => res.json())
       .then((data) => {
-        setJobs(data);
-        if (data.length > 0) setSelectedJob(data[0].id);
+        const available = data.filter((j) => j.promoted === 0);
+        const promoted = data.filter((j) => j.promoted === 1);
+        setAvailableJobs(available);
+        setPromotedJobs(promoted);
+        if (available.length > 0) setSelectedJob(available[0].id);
       })
       .catch((err) => console.error(err));
+  };
+
+  useEffect(() => {
+    if (user) fetchJobs();
   }, [user, navigate]);
 
   const handlePayment = async () => {
@@ -80,7 +87,7 @@ export default function PromoteJob() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <TrendingUp className="size-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">Promovează Job</h1>
+            <h1 className="text-3xl font-bold">Promovare Job</h1>
           </div>
           <p className="text-gray-600">Crește vizibilitatea jobului tău</p>
         </div>
@@ -88,35 +95,67 @@ export default function PromoteJob() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Select Job */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4">Selectează jobul</h2>
-
-              <div className="space-y-3">
-                {jobs.map((job) => (
-                  <label
-                    key={job.id}
-                    className={`flex justify-between items-center p-4 border-2 rounded-lg cursor-pointer ${
-                      selectedJob === job.id
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        checked={selectedJob === job.id}
-                        onChange={() => setSelectedJob(job.id)}
-                      />
+            {/* Promoted Jobs List */}
+            {promotedJobs.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <TrendingUp className="text-green-600 size-5" />
+                  Joburi promovate în prezent
+                </h2>
+                <div className="space-y-3">
+                  {promotedJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex justify-between items-center p-4 border border-green-100 bg-green-50 rounded-lg"
+                    >
                       <div>
                         <div className="font-semibold">{job.title}</div>
                         <div className="text-sm text-gray-600">
-                          {job.applicants} aplicanți
+                          Status: <span className="text-green-600 font-medium">Promovat</span>
                         </div>
                       </div>
+                      <div className="text-sm text-gray-500">
+                        {job.applicants} aplicanți
+                      </div>
                     </div>
-                  </label>
-                ))}
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Select Job to Promote */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4">Selectează jobul pentru promovare</h2>
+
+              <div className="space-y-3">
+                {availableJobs.length > 0 ? (
+                  availableJobs.map((job) => (
+                    <label
+                      key={job.id}
+                      className={`flex justify-between items-center p-4 border-2 rounded-lg cursor-pointer ${
+                        selectedJob === job.id
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          checked={selectedJob === job.id}
+                          onChange={() => setSelectedJob(job.id)}
+                        />
+                        <div>
+                          <div className="font-semibold">{job.title}</div>
+                          <div className="text-sm text-gray-600">
+                            {job.applicants} aplicanți
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Nu mai sunt joburi disponibile pentru promovare.</p>
+                )}
               </div>
             </div>
 
@@ -136,39 +175,41 @@ export default function PromoteJob() {
           {/* RIGHT */}
           <div className="space-y-6">
             {/* Summary */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="font-semibold mb-4">Sumar comandă</h3>
+            {availableJobs.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="font-semibold mb-4">Sumar comandă</h3>
 
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Job</span>
-                  <span className="font-semibold">
-                    {jobs.find((j) => j.id === selectedJob)?.title}
-                  </span>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Job</span>
+                    <span className="font-semibold text-end w-[60%]">
+                      {availableJobs.find((j) => j.id === selectedJob)?.title}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <span>Preț</span>
+                    <span className="font-semibold">
+                      {MONTHLY_PRICE} RON/lună
+                    </span>
+                  </div>
+
+                  <div className="border-t pt-3 mt-3 flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-xl font-bold text-blue-600">
+                      {MONTHLY_PRICE} RON
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-between text-sm">
-                  <span>Preț</span>
-                  <span className="font-semibold">
-                    {MONTHLY_PRICE} RON/lună
-                  </span>
-                </div>
-
-                <div className="border-t pt-3 mt-3 flex justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="text-xl font-bold text-blue-600">
-                    {MONTHLY_PRICE} RON
-                  </span>
-                </div>
+                <button
+                  onClick={handlePayment}
+                  className="w-full mt-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Mergi la plată
+                </button>
               </div>
-
-              <button
-                onClick={handlePayment}
-                className="w-full mt-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Mergi la plată
-              </button>
-            </div>
+            )}
 
             {/* Stats */}
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-lg p-6">
