@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import JobList from "../components/JobList";
 import JobSlider from "../components/JobSlider";
+import FilterDropdown from "../components/FilterDropdown";
 import { Search, MapPin, Building2 } from "lucide-react";
 
 const HomePage = () => {
@@ -20,8 +21,11 @@ const HomePage = () => {
   const [filterPeriod, setFilterPeriod] = useState("");
 
   const [companyOptions, setCompanyOptions] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
   const [experienceOptions, setExperienceOptions] = useState([]);
   const [domainOptions, setDomainOptions] = useState([]);
+
+  const [showSuggestions, setShowSuggestions] = useState({ search: true, city: true, company: true });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -138,22 +142,30 @@ const HomePage = () => {
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
               placeholder="Titlu job..."
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setShowSuggestions(prev => ({ ...prev, search: false }));
+              }}
             />
 
-            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
-              {getSuggestions(searchInput, jobs, (j) => j.titlu || j.title).map(
-                (s, i) => (
-                  <div
-                    key={i}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => setSearchInput(s)}
-                  >
-                    {s}
-                  </div>
-                ),
-              )}
-            </div>
+            {showSuggestions.search && (
+              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+                {getSuggestions(searchInput, jobs, (j) => j.titlu || j.title).map(
+                  (s, i) => (
+                    <div
+                      key={i}
+                      className="p-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => {
+                        setSearchInput(s);
+                        setShowSuggestions(prev => ({ ...prev, search: false }));
+                      }}
+                    >
+                      {s}
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
           </div>
 
           {/* CITY */}
@@ -163,22 +175,30 @@ const HomePage = () => {
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
               placeholder="Oraș..."
               value={cityInput}
-              onChange={(e) => setCityInput(e.target.value)}
+              onChange={(e) => {
+                setCityInput(e.target.value);
+                setShowSuggestions(prev => ({ ...prev, city: false }));
+              }}
             />
 
-            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
-              {getSuggestions(cityInput, jobs, (j) => j.oras || j.city).map(
-                (s, i) => (
-                  <div
-                    key={i}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => setCityInput(s)}
-                  >
-                    {s}
-                  </div>
-                ),
-              )}
-            </div>
+            {showSuggestions.city && (
+              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+                {getSuggestions(cityInput, cityOptions).map(
+                  (s, i) => (
+                    <div
+                      key={i}
+                      className="p-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => {
+                        setCityInput(s);
+                        setShowSuggestions(prev => ({ ...prev, city: false }));
+                      }}
+                    >
+                      {s}
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
           </div>
 
           {/* COMPANY */}
@@ -188,23 +208,30 @@ const HomePage = () => {
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
               placeholder="Companie..."
               value={companyInput}
-              onChange={(e) => setCompanyInput(e.target.value)}
+              onChange={(e) => {
+                setCompanyInput(e.target.value);
+                setShowSuggestions(prev => ({ ...prev, company: true }));
+              }}
             />
 
-            <div className="absolute w-full bg-white border rounded-lg shadow z-50">
-              {getSuggestions(companyInput, companyOptions).map((s, i) => (
-                <div
-                  key={i}
-                  className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
-                  onClick={() => setCompanyInput(s)}
-                >
-                  <Building2 className="size-4 text-gray-500" />
-                  {s}
-                </div>
-              ))}
-            </div>
+            {showSuggestions.company && (
+              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+                {getSuggestions(companyInput, companyOptions).map((s, i) => (
+                  <div
+                    key={i}
+                    className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                    onClick={() => {
+                      setCompanyInput(s);
+                      setShowSuggestions(prev => ({ ...prev, company: false }));
+                    }}
+                  >
+                    <Building2 className="size-4 text-gray-500" />
+                    {s}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
           <button
             onClick={() => fetchJobs(1)}
             className="px-8 py-3 bg-blue-600 text-white rounded-lg"
@@ -213,41 +240,28 @@ const HomePage = () => {
           </button>
         </div>
 
-        {/* FILTERS unchanged */}
+        {/* FILTERS enhanced */}
         <div className="flex flex-wrap gap-4">
-          <select
+          <FilterDropdown
+            options={experienceOptions}
             value={filterExperience}
-            onChange={(e) => setFilterExperience(e.target.value)}
-          >
-            <option value="">Experiență</option>
-            {experienceOptions.map((exp) => (
-              <option key={exp} value={exp}>
-                {exp}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterExperience}
+            placeholder="Experiență"
+          />
 
-          <select
+          <FilterDropdown
+            options={domainOptions}
             value={filterDomain}
-            onChange={(e) => setFilterDomain(e.target.value)}
-          >
-            <option value="">Domeniu</option>
-            {domainOptions.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterDomain}
+            placeholder="Domeniu"
+          />
 
-          <select
+          <FilterDropdown
+            options={["24h", "3d", "7d"]}
             value={filterPeriod}
-            onChange={(e) => setFilterPeriod(e.target.value)}
-          >
-            <option value="">Perioadă</option>
-            <option value="24h">24h</option>
-            <option value="3d">3 zile</option>
-            <option value="7d">7 zile</option>
-          </select>
+            onChange={setFilterPeriod}
+            placeholder="Perioadă"
+          />
         </div>
       </div>
 

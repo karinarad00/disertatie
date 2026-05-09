@@ -43,11 +43,11 @@ const JobCard = ({ job, isFavorite: initialFavorite, user, setFavorites }) => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow flex gap-4">
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 w-20 h-20">
         <ImageWithFallback
           src={job.LOGO}
           alt={job.DENUMIRE_COMPANIE || "Companie nedefinită"}
-          className="w-20 h-20 rounded-lg"
+          className="w-full h-full"
         />
       </div>
 
