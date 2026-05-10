@@ -25,7 +25,11 @@ const HomePage = () => {
   const [experienceOptions, setExperienceOptions] = useState([]);
   const [domainOptions, setDomainOptions] = useState([]);
 
-  const [showSuggestions, setShowSuggestions] = useState({ search: true, city: true, company: true });
+  const [showSuggestions, setShowSuggestions] = useState({
+    search: true,
+    city: true,
+    company: true,
+  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -85,6 +89,7 @@ const HomePage = () => {
       .then((res) => res.json())
       .then((data) => {
         setCompanyOptions(data.companies);
+        setCityOptions(data.locations);
         setExperienceOptions(data.experience);
         setDomainOptions(data.domains);
       })
@@ -144,26 +149,34 @@ const HomePage = () => {
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
-                setShowSuggestions(prev => ({ ...prev, search: false }));
+                setShowSuggestions((prev) => ({ ...prev, search: true }));
               }}
+              onFocus={() =>
+                setShowSuggestions((prev) => ({ ...prev, search: true }))
+              }
             />
 
-            {showSuggestions.search && (
-              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
-                {getSuggestions(searchInput, jobs, (j) => j.titlu || j.title).map(
-                  (s, i) => (
-                    <div
-                      key={i}
-                      className="p-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => {
-                        setSearchInput(s);
-                        setShowSuggestions(prev => ({ ...prev, search: false }));
-                      }}
-                    >
-                      {s}
-                    </div>
-                  ),
-                )}
+            {showSuggestions.search && searchInput && (
+              <div className="absolute w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 overflow-hidden">
+                {getSuggestions(
+                  searchInput,
+                  jobs.map((j) => j.titlu || j.title),
+                ).map((s, i) => (
+                  <div
+                    key={i}
+                    className="mx-1 my-0.5 px-4 py-3 hover:bg-gray-100 cursor-pointer flex items-center gap-3 rounded-md"
+                    onClick={() => {
+                      setSearchInput(s);
+                      setShowSuggestions((prev) => ({
+                        ...prev,
+                        search: false,
+                      }));
+                    }}
+                  >
+                    <Search className="size-4 text-gray-500" />
+                    {s}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -177,26 +190,32 @@ const HomePage = () => {
               value={cityInput}
               onChange={(e) => {
                 setCityInput(e.target.value);
-                setShowSuggestions(prev => ({ ...prev, city: false }));
+                setShowSuggestions((prev) => ({ ...prev, city: true }));
               }}
+              onFocus={() =>
+                setShowSuggestions((prev) => ({ ...prev, city: true }))
+              }
             />
 
-            {showSuggestions.city && (
-              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
-                {getSuggestions(cityInput, cityOptions).map(
-                  (s, i) => (
-                    <div
-                      key={i}
-                      className="p-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => {
-                        setCityInput(s);
-                        setShowSuggestions(prev => ({ ...prev, city: false }));
-                      }}
-                    >
-                      {s}
-                    </div>
-                  ),
-                )}
+            {showSuggestions.city && cityInput && (
+              <div className="absolute w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 overflow-hidden">
+                {getSuggestions(
+                  cityInput,
+                  cityOptions,
+                  (c) => c.denumire_oras,
+                ).map((s, i) => (
+                  <div
+                    key={i}
+                    className="mx-1 my-0.5 px-4 py-3 hover:bg-gray-100 cursor-pointer flex items-center gap-3 rounded-md"
+                    onClick={() => {
+                      setCityInput(s);
+                      setShowSuggestions((prev) => ({ ...prev, city: false }));
+                    }}
+                  >
+                    <MapPin className="size-4 text-gray-500" />
+                    {s}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -210,19 +229,25 @@ const HomePage = () => {
               value={companyInput}
               onChange={(e) => {
                 setCompanyInput(e.target.value);
-                setShowSuggestions(prev => ({ ...prev, company: true }));
+                setShowSuggestions((prev) => ({ ...prev, company: true }));
               }}
+              onFocus={() =>
+                setShowSuggestions((prev) => ({ ...prev, company: true }))
+              }
             />
 
-            {showSuggestions.company && (
-              <div className="absolute w-full bg-white border rounded-lg shadow z-50">
+            {showSuggestions.company && companyInput && (
+              <div className="absolute w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 overflow-hidden">
                 {getSuggestions(companyInput, companyOptions).map((s, i) => (
                   <div
                     key={i}
-                    className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                    className="mx-1 my-0.5 px-4 py-3 hover:bg-gray-100 cursor-pointer flex items-center gap-3 rounded-md"
                     onClick={() => {
                       setCompanyInput(s);
-                      setShowSuggestions(prev => ({ ...prev, company: false }));
+                      setShowSuggestions((prev) => ({
+                        ...prev,
+                        company: false,
+                      }));
                     }}
                   >
                     <Building2 className="size-4 text-gray-500" />
