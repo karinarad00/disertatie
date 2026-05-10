@@ -44,8 +44,7 @@ def get_jobs():
     jobs = []
     for row in cursor:
         descriere = lob_to_str(row[7])
-        logo = lob_to_str(row[9])
-        data_postarii = row[8].isoformat() if row[8] else None  # <-- convert datetime to string
+        data_postarii = row[8].isoformat() if row[8] else None 
         jobs.append({
             "ID_JOB": row[0],
             "TITLU": row[1],
@@ -56,7 +55,7 @@ def get_jobs():
             "DENUMIRE_COMPANIE": row[6],
             "DESCRIERE": descriere,
             "DATA_POSTARII": data_postarii,
-            "LOGO": logo or "https://via.placeholder.com/80",
+            "LOGO": row[9],
             # Text for embedding
             "text": f"{row[1]}, {row[2]}, {row[3]}, {row[4]}, {row[5]}, {descriere}"
         })
