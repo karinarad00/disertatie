@@ -37,7 +37,8 @@ const Sugestii = () => {
 
       const data = res.data;
       console.log("Sugestii primite:", data);
-      setJobs(data.jobs || []);
+      const sortedJobs = (data.jobs || []).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      setJobs(sortedJobs);
       setExplanation(data.explanation || "");
       setCurrentPage(1);
     } catch (err) {

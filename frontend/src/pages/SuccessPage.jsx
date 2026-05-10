@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { updateProfile } from "../redux/authSlice";
 import axios from "../axiosClient";
 
 const SuccessPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [productType, setProductType] = useState(null);
@@ -12,16 +15,21 @@ const SuccessPage = () => {
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
 
-    if (!sessionId) {
-      setProductType("profile");
-      setLoading(false);
-      return;
-    }
+    const initSuccess = async () => {
+      try {
+        // Refresh user profile to get latest subscription status
+        const profRes = await axios.get("/api/users/profil");
+        dispatch(updateProfile(profRes.data));
 
-    // Cere backend-ului detalii sesiune Stripe
-    axios.get(`/api/stripe/session/${sessionId}`)
-      .then(async (res) => {
-        const { prodType, jobId: id } = res.data;
+        if (!sessionId) {
+          setProductType("profile");
+          setLoading(false);
+          return;
+        }
+
+        // Cere backend-ului detalii sesiune Stripe
+        const sessionRes = await axios.get(`/api/stripe/session/${sessionId}`);
+        const { prodType, jobId: id } = sessionRes.data;
         setProductType(prodType || "profile");
         setJobId(id || null);
 
@@ -29,18 +37,20 @@ const SuccessPage = () => {
         if (prodType === "promovare_job" && id) {
           try {
             await axios.put(`/api/jobs/promote/${id}`);
-            console.log("Job promovat cu succes via manual trigger.");
           } catch (promoteErr) {
             console.error("Eroare la trigger manual promovare:", promoteErr);
           }
         }
-      })
-      .catch((err) => {
-        console.error("Eroare recuperare sesiune:", err);
+      } catch (err) {
+        console.error("Eroare inițializare succes:", err);
         setProductType("profile");
-      })
-      .finally(() => setLoading(false));
-  }, [searchParams]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initSuccess();
+  }, [searchParams, dispatch]);
 
   useEffect(() => {
     if (!loading && productType) {

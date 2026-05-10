@@ -138,7 +138,7 @@ export default function JobMatching() {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span>Job</span>
-                  <span className="font-semibold">
+                  <span className="font-semibold text-end w-[60%]">
                     {jobs.find((j) => j.id === selectedJob)?.title}
                   </span>
                 </div>
