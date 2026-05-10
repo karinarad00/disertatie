@@ -2,24 +2,18 @@ const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 3600 });
 
 const cacheMiddleware = (req, res, next) => {
-  // Allow caching for GET and POST (for AI analysis routes)
-  if (req.method !== "GET" && req.method !== "POST") return next();
+  // Only cache simple public GET routes
+  if (req.method !== "GET") return next();
 
-  // Do not cache sensitive user-specific routes or frequently updated lists
-  if (
-    req.originalUrl.includes("/api/users/profil") ||
-    req.originalUrl.includes("/api/favorites") ||
-    req.originalUrl.includes("/api/jobs/by-company") ||
-    req.originalUrl.includes("/api/stripe/session")
-  ) {
+  // Explicit list of routes that are safe to cache globally
+  const safeRoutes = ["/api/jobs/all", "/api/domenii/all"];
+  const isSafe = safeRoutes.some((route) => req.originalUrl.startsWith(route));
+
+  if (!isSafe) {
     return next();
   }
 
-  // Include the Authorization header and request body in the cache key
-  const authHeader = req.headers.authorization || "";
-  const bodyKey = JSON.stringify(req.body);
-  const key = req.originalUrl + authHeader + bodyKey;
-
+  const key = req.originalUrl;
   const cached = myCache.get(key);
 
   if (cached) {
