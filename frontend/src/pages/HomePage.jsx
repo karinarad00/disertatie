@@ -2,7 +2,15 @@ import React, { useEffect, useState } from "react";
 import JobList from "../components/JobList";
 import JobSlider from "../components/JobSlider";
 import FilterDropdown from "../components/FilterDropdown";
-import { Search, MapPin, Building2 } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Building2,
+  Briefcase,
+  Layers,
+  Clock,
+  Calendar,
+} from "lucide-react";
 
 const HomePage = () => {
   const [paidJobs, setPaidJobs] = useState([]);
@@ -266,22 +274,23 @@ const HomePage = () => {
         </div>
 
         {/* FILTERS enhanced */}
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <FilterDropdown
+            icon={Briefcase}
             options={experienceOptions}
             value={filterExperience}
             onChange={setFilterExperience}
             placeholder="Experiență"
           />
-
           <FilterDropdown
+            icon={Layers}
             options={domainOptions}
             value={filterDomain}
             onChange={setFilterDomain}
             placeholder="Domeniu"
           />
-
           <FilterDropdown
+            icon={Clock}
             options={["24h", "3d", "7d"]}
             value={filterPeriod}
             onChange={setFilterPeriod}
