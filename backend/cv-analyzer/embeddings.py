@@ -48,5 +48,11 @@ def search_jobs(cv_text: str, top_k=None):
 
     D, I = index.search(cv_vector, top_k)
 
-    # Rezultatul sortat după relevanță
-    return [jobs[i] for i in I[0]]
+    # Rezultatul sortat după relevanță, incluzând scorul de distanță
+    results = []
+    for i, distance in zip(I[0], D[0]):
+        job = jobs[i].copy()
+        job["score"] = float(distance)
+        results.append(job)
+        
+    return results
