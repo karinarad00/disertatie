@@ -57,9 +57,10 @@ function ChangeView({ center, zoom }) {
 // =========================
 // CLUSTER LAYER (FIX)
 // =========================
-function ClusterLayer({ markers }) {
+function ClusterLayer({ markers, focusLocation }) {
   const map = useMap();
   const clusterRef = useRef(null);
+  const markersMap = useRef({});
 
   useEffect(() => {
     const L = require("leaflet");
@@ -69,6 +70,7 @@ function ClusterLayer({ markers }) {
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
+      disableClusteringAtZoom: 16,
     });
 
     clusterRef.current = clusterGroup;
@@ -83,22 +85,91 @@ function ClusterLayer({ markers }) {
     if (!clusterRef.current) return;
 
     clusterRef.current.clearLayers();
+    markersMap.current = {};
 
+    // Group jobs by location only
+    const grouped = {};
     markers.forEach((loc) => {
-      const marker = L.marker([loc.lat, loc.lng], { icon: customIcon });
+      const coordKey = `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`;
+      if (!grouped[coordKey]) grouped[coordKey] = { lat: loc.lat, lng: loc.lng, address: loc.address, jobs: [] };
+      grouped[coordKey].jobs.push(loc);
+    });
 
-      marker.bindPopup(`
-        <div style="min-width:160px">
-          <strong>${loc.titlu}</strong><br/>
-          <b>${loc.company}</b><br/>
-          <span>${loc.address}</span><br/>
-          <a href="/job/${loc.id_job}" target="_self">Vezi detalii</a>
-        </div>
-      `);
+    Object.values(grouped).forEach((group) => {
+      const marker = L.marker([group.lat, group.lng], { icon: customIcon });
 
-      clusterRef.current.addLayer(marker);
+      // Group jobs by company for the popup list
+      const jobsByCompany = group.jobs.reduce((acc, j) => {
+        if (!acc[j.company]) acc[j.company] = [];
+        acc[j.company].push(j);
+        return acc;
+      }, {});
+
+      let popupContent = "";
+      if (group.jobs.length === 1) {
+        const j = group.jobs[0];
+        popupContent = `
+          <div style="min-width:160px">
+            <strong>${j.titlu}</strong><br/>
+            <b>${j.company}</b><br/>
+            <span>${j.address}</span><br/>
+            <a href="/job/${j.id_job}" target="_self">Vezi detalii</a>
+          </div>
+        `;
+      } else {
+        const listItems = Object.entries(jobsByCompany)
+          .map(([company, jobs]) => `
+            <div style="margin-bottom: 12px;">
+              <div style="font-weight: bold; color: #444; border-bottom: 1px solid #ddd; margin-bottom: 5px;">${company}</div>
+              ${jobs.map(j => `
+                <div style="padding-left: 8px; margin-bottom: 4px;">
+                  <a href="/job/${j.id_job}" target="_self" style="text-decoration: none; color: #2563eb;">• ${j.titlu}</a>
+                </div>
+              `).join('')}
+            </div>
+          `)
+          .join("");
+
+        popupContent = `
+          <div style="min-width:220px">
+            <div style="font-weight: bold; color: #333; margin-bottom: 10px; border-bottom: 2px solid #2563eb; padding-bottom: 5px;">
+              ${group.jobs.length} joburi disponibile
+            </div>
+            <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+              ${listItems}
+            </div>
+            <div style="font-size: 0.8em; color: #888; margin-top: 8px; border-top: 1px solid #eee; pt: 5px;">
+              ${group.address}
+            </div>
+          </div>
+        `;
+      }
+
+      marker.bindPopup(popupContent);
+      
+      if (marker) {
+        clusterRef.current.addLayer(marker);
+      }
+
+      group.jobs.forEach((j) => {
+        const key = `${j.lat}-${j.lng}-${j.id_job}`;
+        markersMap.current[key] = marker;
+      });
     });
   }, [markers]);
+
+  useEffect(() => {
+    if (focusLocation && clusterRef.current) {
+      const key = `${focusLocation.lat}-${focusLocation.lng}-${focusLocation.id_job}`;
+      const marker = markersMap.current[key];
+      if (marker) {
+        map.setView([focusLocation.lat, focusLocation.lng], 18);
+        clusterRef.current.zoomToShowLayer(marker, () => {
+          marker.openPopup();
+        });
+      }
+    }
+  }, [focusLocation, map]);
 
   return null;
 }
@@ -114,6 +185,7 @@ export default function MapPage() {
   const [currentPosition, setCurrentPosition] = useState(null);
   const [mapCenter, setMapCenter] = useState([45.9432, 24.9668]);
   const [zoom, setZoom] = useState(7);
+  const [focusLocation, setFocusLocation] = useState(null);
 
   // =========================
   // FETCH LOCATIONS
@@ -204,7 +276,8 @@ export default function MapPage() {
 
   const handleCardClick = (loc) => {
     setMapCenter([loc.lat, loc.lng]);
-    setZoom(15);
+    setZoom(18);
+    setFocusLocation(loc);
   };
 
   // =========================
@@ -241,7 +314,10 @@ export default function MapPage() {
                   )}
 
                   {/* ✅ CLUSTER FIX */}
-                  <ClusterLayer markers={filteredLocations} />
+                  <ClusterLayer 
+                    markers={filteredLocations} 
+                    focusLocation={focusLocation}
+                  />
                 </MapContainer>
               )}
             </div>
