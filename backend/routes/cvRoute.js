@@ -162,6 +162,23 @@ router.get("/preview_cv", async (req, res) => {
   }
 });
 
+// ================= CANDIDATES POOL =================
+router.get("/candidates-pool", authenticateToken, async (req, res) => {
+  try {
+    const candidates = await executeQuery(
+      `SELECT u.id_utilizator, u.username, u.email, u.phone, u.experience, u.imagine_profil, u.cv_url,
+              o.denumire_oras AS location
+       FROM Utilizator u
+       LEFT JOIN Oras o ON u.location = o.id_oras
+       WHERE u.cv_url IS NOT NULL AND u.tip_utilizator = 'Candidat'`,
+    );
+    res.json(candidates);
+  } catch (err) {
+    console.error("Eroare la preluarea pool-ului de candidați:", err);
+    res.status(500).json({ error: "Eroare server." });
+  }
+});
+
 // ================= ANALYZE CV =================
 router.post("/analyze", cacheMiddleware, async (req, res) => {
   try {

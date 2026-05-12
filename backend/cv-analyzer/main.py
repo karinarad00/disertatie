@@ -254,19 +254,31 @@ def job_cv_match(req: JobCVMatchRequest):
                                 (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
                 score = round(similarity * 100, 2)
 
-                explanation_prompt = f"""
-Explică în LIMBA ROMÂNĂ de ce acest candidat se potrivește pentru job.
-Fii concis (maxim 3 fraze).
+                analysis_prompt = f"""
+Ești un recruiter expert. Analizează acest CV în raport cu jobul dat.
+Extrage informațiile solicitate în LIMBA ROMÂNĂ și returnează un obiect JSON valid.
 
 Job: {job_text[:500]}
-CV: {cv_text[:500]}
+CV: {cv_text[:2000]}
+
+Structură JSON:
+{{
+  "explanation": "Explicație scurtă (max 3 fraze) despre potrivire.",
+  "title": "Titlu profesional (ex: Software Engineer)",
+  "location": "Oraș/Țară",
+  "experience": "Ani de experiență (ex: 3 ani)",
+  "skills": ["skill1", "skill2"],
+  "summary": "Rezumat profil (max 2 fraze)",
+  "phone": "Număr de telefon dacă există, altfel N/A"
+}}
 """
-                explanation = ask_llm(explanation_prompt, system_message="Ești un recruiter expert. Oferă explicații profesionale în română.")
+                raw_response = ask_llm(analysis_prompt, system_message="Ești un recruiter expert care returnează STRICT JSON.")
+                details = parse_llm_json(raw_response)
 
                 results.append({
                     "cvUrl": cv_url,
                     "fitScore": score,
-                    "explanation": explanation
+                    **details
                 })
             except Exception as e:
                 print(f"Error processing CV {cv_url}: {e}")

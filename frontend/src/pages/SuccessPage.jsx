@@ -66,8 +66,7 @@ const SuccessPage = () => {
             navigate("/promote-job");
             break;
           case "candidate_match":
-            if (jobId) navigate(`/candidate-match/${jobId}`);
-            else navigate("/company");
+            navigate("/matching");
             break;
           default:
             navigate("/profile");
@@ -80,7 +79,7 @@ const SuccessPage = () => {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
     </div>
   );
 
@@ -113,14 +112,13 @@ const SuccessPage = () => {
                 navigate("/promote-job");
                 break;
               case "candidate_match":
-                if (jobId) navigate(`/candidate-match/${jobId}`);
-                else navigate("/company");
+                navigate("/matching");
                 break;
               default:
                 navigate("/profile");
             }
           }}
-          className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+          className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition shadow-lg shadow-green-200"
         >
           Mergi către produs
         </button>

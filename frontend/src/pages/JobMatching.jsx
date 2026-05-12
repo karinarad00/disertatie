@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useSelector } from "react-redux";
-import { ArrowLeft, Target, Calendar } from "lucide-react";
+import { ArrowLeft, Target, Calendar, Briefcase, DollarSign, TrendingUp } from "lucide-react";
 
 export default function JobMatching() {
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
   const [paid, setPaid] = useState(false);
 
   const PRICE = 40;
@@ -23,24 +22,23 @@ export default function JobMatching() {
       .then((res) => res.json())
       .then((data) => {
         setJobs(data);
-        if (data.length > 0) setSelectedJob(data[0].id);
       })
       .catch((err) => console.error(err));
-  }, [navigate]);
+  }, [user, navigate]);
 
   const handlePayment = async () => {
-    if (!selectedJob) return alert("Selectează un job!");
-
     try {
       const res = await fetch(
         "http://localhost:5000/api/stripe/create-checkout-session",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
           body: JSON.stringify({
             userId: user.id,
             prodType: "candidate_match",
-            jobId: selectedJob,
           }),
         },
       );
@@ -53,15 +51,14 @@ export default function JobMatching() {
     }
   };
 
-  const handleGoToMatching = () => {
-    if (!selectedJob) return alert("Selectează un job!");
-    navigate(`/candidate-match/${selectedJob}`);
+  const handleGoToMatching = (jobId) => {
+    navigate(`/candidate-match/${jobId}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* BACK */}
+        {/* Back */}
         <button
           onClick={() => navigate("/company")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
@@ -70,51 +67,67 @@ export default function JobMatching() {
           Înapoi la profil companie
         </button>
 
-        {/* HEADER */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Target className="size-8 text-green-600" />
-            <h1 className="text-3xl font-bold">Potrivire Joburi</h1>
+            <h1 className="text-3xl font-bold">Potrivire Inteligentă</h1>
           </div>
-          <p className="text-gray-600">
-            Acces complet la procesul automat de matching pentru toate joburile.
-          </p>
+          <p className="text-gray-600">Utilizează AI pentru a identifica cei mai buni candidați</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT */}
           <div className="lg:col-span-2 space-y-6">
-            {/* JOB SELECT */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4">Selectează jobul</h2>
-
-              <div className="space-y-3">
-                {jobs.map((job) => (
-                  <label
-                    key={job.id}
-                    className={`flex justify-between items-center p-4 border-2 rounded-lg cursor-pointer ${
-                      selectedJob === job.id
-                        ? "border-green-600 bg-green-50"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        checked={selectedJob === job.id}
-                        onChange={() => setSelectedJob(job.id)}
-                      />
-                      <div>
-                        <div className="font-semibold">{job.title}</div>
-                        <div className="text-sm text-gray-600">
-                          {job.applicants} aplicanți
+            {paid ? (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Briefcase className="text-green-600 size-5" />
+                  Selectează jobul pentru analiză
+                </h2>
+                <div className="space-y-3">
+                  {jobs.length > 0 ? (
+                    jobs.map((job) => (
+                      <div
+                        key={job.id}
+                        onClick={() => handleGoToMatching(job.id)}
+                        className="flex justify-between items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-green-600 hover:bg-green-50 transition"
+                      >
+                        <div>
+                          <div className="font-semibold">{job.title}</div>
+                          <div className="text-sm text-gray-600">
+                            {job.applicants || 0} candidați înscriși
+                          </div>
+                        </div>
+                        <div className="text-green-600 font-medium text-sm">
+                          Vezi potriviri →
                         </div>
                       </div>
-                    </div>
-                  </label>
-                ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500 italic">Nu ai postat niciun job încă.</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold mb-6">De ce să alegi AI Matching?</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                    <h3 className="font-bold text-green-900 mb-2">Analiză Semantică</h3>
+                    <p className="text-sm text-green-800">
+                      Trecem dincolo de cuvinte cheie. AI-ul înțelege contextul și experiența reală.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <h3 className="font-bold text-emerald-900 mb-2">Economie de Timp</h3>
+                    <p className="text-sm text-emerald-800">
+                      Sortează sute de CV-uri în câteva secunde și concentrează-te pe interviuri.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* INFO */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
@@ -122,76 +135,68 @@ export default function JobMatching() {
                 Informații serviciu
               </h2>
               <p className="text-green-800 text-sm">
-                Plata se efectuează o singură dată pentru acces complet la toate
-                joburile eligibile. Poți vedea candidații și reîmprospăta
-                rezultatele oricând.
+                Abonamentul AI Matcher îți oferă acces nelimitat la analiza CV-urilor pentru toate joburile tale active. 
+                Sistemul calculează un scor de potrivire bazat pe cerințele jobului și experiența candidaților.
               </p>
             </div>
           </div>
 
           {/* RIGHT */}
           <div className="space-y-6">
-            {/* SUMMARY */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="font-semibold mb-4">Sumar comandă</h3>
-
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Job</span>
-                  <span className="font-semibold text-end w-[60%]">
-                    {jobs.find((j) => j.id === selectedJob)?.title}
-                  </span>
+            {!paid ? (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="font-semibold mb-4">Sumar comandă</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Serviciu</span>
+                    <span className="font-semibold text-end">Abonament AI Matcher</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Preț</span>
+                    <span className="font-semibold">{PRICE} RON/lună</span>
+                  </div>
+                  <div className="border-t pt-3 mt-3 flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-xl font-bold text-green-600">{PRICE} RON</span>
+                  </div>
                 </div>
-
-                <div className="flex justify-between text-sm">
-                  <span>Preț</span>
-                  <span className="font-semibold">{PRICE} RON</span>
+                <button
+                  onClick={handlePayment}
+                  className="w-full mt-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                >
+                  Mergi la plată
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="size-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <h3 className="font-semibold">Abonament activ</h3>
                 </div>
-
-                <div className="border-t pt-3 mt-3 flex justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="text-xl font-bold text-green-600">
-                    {PRICE} RON
-                  </span>
+                <p className="text-sm text-gray-600 mb-4">
+                  Ai acces complet la instrumentele de analiză AI. Selectează un job din listă pentru a vedea potrivirile.
+                </p>
+                <div className="p-3 bg-green-50 rounded-lg border border-green-100 text-xs text-green-700">
+                  Următoarea facturare va fi procesată automat prin Stripe.
                 </div>
               </div>
+            )}
 
-              {/* BUTON PRINCIPAL */}
-              <button
-                onClick={handlePayment}
-                disabled={paid}
-                className={`w-full mt-6 py-3 rounded-lg text-white ${
-                  paid
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
-              >
-                {paid ? "Plata efectuată" : "Plătește pentru acces"}
-              </button>
-
-              {/* BUTON MATCHING */}
-              {paid && selectedJob && (
-                <button
-                  onClick={handleGoToMatching}
-                  className="w-full mt-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  Vezi candidații pentru job
-                </button>
-              )}
-            </div>
-
-            {/* STATS */}
-            <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-lg p-6">
+            {/* Stats */}
+            <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-6">
               <h3 className="font-bold mb-3">Rezultate estimate</h3>
-
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Target />
-                  <span>+50% șanse de potrivire</span>
+                  <TrendingUp className="size-5" />
+                  <span>+80% eficiență în recrutare</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar />
-                  <span>Proces mai rapid de recrutare</span>
+                  <Target className="size-5" />
+                  <span>Matching semantic precis</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Calendar className="size-5" />
+                  <span>Reducere timp angajare</span>
                 </div>
               </div>
             </div>
