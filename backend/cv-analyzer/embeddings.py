@@ -7,11 +7,13 @@ from sentence_transformers import SentenceTransformer
 INDEX_PATH = "faiss_index/jobs.index"
 META_PATH = "faiss_index/jobs_meta.json"
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
 
 def embed(text: str):
     vector = model.encode(text)
+    # Normalize for cosine similarity
+    vector = vector / np.linalg.norm(vector)
     return np.array(vector, dtype="float32")
 
 
@@ -20,7 +22,8 @@ def build_job_index(jobs: list):
     vectors = np.stack(vectors)
 
     dim = vectors.shape[1]
-    index = faiss.IndexFlatL2(dim)
+    # Use Inner Product (IP) for Cosine Similarity since vectors are normalized
+    index = faiss.IndexFlatIP(dim)
     index.add(vectors)
 
     os.makedirs("faiss_index", exist_ok=True)
@@ -32,8 +35,7 @@ def build_job_index(jobs: list):
 
 def search_jobs(cv_text: str, top_k=None):
     """
-    Caută joburi relevante pentru textul CV-ului.
-    Dacă top_k=None, returnează TOATE joburile sortate după relevanță.
+    Caută joburi relevante pentru textul CV-ului folosind similaritatea cosinus.
     """
     index = faiss.read_index(INDEX_PATH)
 
@@ -42,17 +44,17 @@ def search_jobs(cv_text: str, top_k=None):
 
     cv_vector = embed(cv_text).reshape(1, -1)
 
-    # Dacă nu există top_k, returnează toate joburile
     if top_k is None or top_k > len(jobs):
         top_k = len(jobs)
 
+    # For IP, higher similarity is better
     D, I = index.search(cv_vector, top_k)
 
-    # Rezultatul sortat după relevanță, incluzând scorul de distanță
     results = []
-    for i, distance in zip(I[0], D[0]):
+    for i, similarity in zip(I[0], D[0]):
         job = jobs[i].copy()
-        job["score"] = float(distance)
+        # Similarity is already the dot product, capped between 0 and 1
+        job["score"] = float(max(0, similarity))
         results.append(job)
         
     return results

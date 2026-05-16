@@ -187,7 +187,7 @@ def job_suggestions(req: CVRequest):
             if idx < 5: # Calculăm matchScore detaliat doar pentru primele 5
                 job_desc = job.get("DESCRIERE") or job.get("description") or ""
                 llm_prompt = f"""
-Evaluează potrivirea dintre acest CV și Job Description.
+Evaluează potrivirea dintre acest CV și Job Description, indiferent de limbă (română/engleză).
 Returnează un obiect JSON cu scorul de compatibilitate (matchScore) între 0 și 100.
 
 {{
@@ -208,7 +208,8 @@ CV: {cv_text[:1000]}
                 match_score = int(job.get("score", 0) * 100) if job.get("score") else 40
 
             job_copy["matchScore"] = min(max(match_score, 0), 100)
-            jobs_with_scores.append(job_copy)
+            if job_copy["matchScore"] > 0:
+                jobs_with_scores.append(job_copy)
 
         formatted_jobs = [format_job_for_ui(job, idx) for idx, job in enumerate(jobs_with_scores)]
         return {
@@ -236,7 +237,9 @@ def job_cv_match(req: JobCVMatchRequest):
             raise HTTPException(status_code=404, detail="Job not found")
 
         job_text = job_meta["text"]
+        print(f"DEBUG: Job text length: {len(job_text)}")
         job_vector = embed(job_text).reshape(1, -1)
+        print(f"DEBUG: Job vector norm: {np.linalg.norm(job_vector)}")
 
         results = []
         for cv_url in req.cvUrls:
@@ -247,11 +250,15 @@ def job_cv_match(req: JobCVMatchRequest):
                     path = tmp.name
 
                 cv_text = extract_text_from_pdf(path)[:4000]
+                print(f"DEBUG: CV text length: {len(cv_text)}")
                 os.unlink(path)
 
                 cv_vector = embed(cv_text).reshape(1, -1)
+                print(f"DEBUG: CV vector norm: {np.linalg.norm(cv_vector)}")
+                
                 similarity = float(np.dot(job_vector, cv_vector.T) / 
                                 (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
+                print(f"DEBUG: Calculated similarity: {similarity}")
                 score = round(similarity * 100, 2)
 
                 analysis_prompt = f"""
