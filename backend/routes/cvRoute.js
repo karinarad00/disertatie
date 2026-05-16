@@ -116,6 +116,8 @@ router.post(
   },
 );
 
+const docxPdf = require("docx-pdf");
+
 // ================= PREVIEW CV =================
 router.get("/preview_cv", async (req, res) => {
   try {
@@ -130,28 +132,46 @@ router.get("/preview_cv", async (req, res) => {
 
     if (!response.ok) {
       return res.status(400).json({
-        error: "Nu am putut descărca PDF-ul",
+        error: "Nu am putut descărca fișierul",
       });
     }
 
-    const tempPath = path.join(uploadDir, `cv_temp_${Date.now()}.pdf`);
-    const fileStream = fs.createWriteStream(tempPath);
+    const isDocx = decodedUrl.toLowerCase().endsWith(".docx");
+    const tempExtension = isDocx ? ".docx" : ".pdf";
+    const tempPath = path.join(uploadDir, `cv_temp_${Date.now()}${tempExtension}`);
+    const pdfPath = path.join(uploadDir, `cv_temp_${Date.now()}.pdf`);
 
     await new Promise((resolve, reject) => {
+      const fileStream = fs.createWriteStream(tempPath);
       response.body.pipe(fileStream);
       response.body.on("error", reject);
       fileStream.on("finish", resolve);
     });
 
+    if (isDocx) {
+      await new Promise((resolve, reject) => {
+        docxPdf(tempPath, pdfPath, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      // Delete docx temp
+      fs.unlink(tempPath, (err) => { if(err) console.error(err); });
+    } else {
+      // It's already a PDF (or assumed to be handled)
+      // Renaming to match expected pdfPath for streaming
+      fs.renameSync(tempPath, pdfPath);
+    }
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=cv.pdf");
 
-    const readStream = fs.createReadStream(tempPath);
+    const readStream = fs.createReadStream(pdfPath);
     readStream.pipe(res);
 
     readStream.on("close", () => {
-      fs.unlink(tempPath, (err) => {
-        if (err) console.error("Eroare ștergere temp:", err);
+      fs.unlink(pdfPath, (err) => {
+        if (err) console.error("Eroare ștergere temp PDF:", err);
       });
     });
   } catch (err) {

@@ -89,6 +89,7 @@ def analyze_cv(req: CVRequest):
             path = tmp.name
 
         text = extract_text_from_pdf(path)
+        print(f"DEBUG: Extracted CV text (first 500 chars): {text[:500]}")
         os.unlink(path)
         text = text[:6000] # Mărim limita de text pentru analiză mai bună
 
@@ -175,6 +176,7 @@ def job_suggestions(req: CVRequest):
             path = tmp.name
 
         cv_text = extract_text_from_pdf(path)[:4000]
+        print(f"DEBUG: Extracted CV text (first 500 chars) in job_suggestions: {cv_text[:500]}")
         os.unlink(path)
 
         top_k = 10
