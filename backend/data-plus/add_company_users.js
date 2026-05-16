@@ -48,7 +48,6 @@ async function addCompanyUsers() {
         { autoCommit: true },
       );
 
-      console.log(`Added: ${username}`);
     }
 
     console.log("Successfully processed all companies.");

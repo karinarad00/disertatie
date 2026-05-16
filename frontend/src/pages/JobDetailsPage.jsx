@@ -17,11 +17,11 @@ const JobDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [applying, setApplying] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
 
   const formatDate = (isoString) => {
     if (!isoString) return "Data necunoscută";
@@ -40,17 +40,44 @@ const JobDetailsPage = () => {
     return "Nedefinit";
   };
 
+  const checkIfApplied = async (jobId) => {
+    if (!user) return;
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/aplicari/${jobId}`,
+        {
+          headers: { Authorization: `Bearer ${user.token}` },
+        },
+      );
+      const applied = res.data.some(
+        (app) => app.ID_UTILIZATOR === user.id_utilizator,
+      );
+      setHasApplied(applied);
+    } catch (err) {
+      console.error("Error checking application status:", err);
+    }
+  };
+
   const handleApply = async () => {
     if (!user) return;
     setApplying(true);
     try {
-      await axios.post("http://localhost:5000/api/aplicari/add", {
-        id_job: job.ID_JOB,
-        id_utilizator: user.id_utilizator,
-      });
+      await axios.post(
+        `http://localhost:5000/api/aplicari/${job.ID_JOB}/apply`,
+        {
+          id_utilizator: user.id,
+        },
+        {
+          headers: { Authorization: `Bearer ${user.token}` },
+        },
+      );
       alert("Aplicație trimisă cu succes!");
+      setHasApplied(true);
     } catch (err) {
-      alert("A apărut o eroare la aplicare. Vă rugăm să încercați din nou.");
+      const errorMessage =
+        err.response?.data?.message || "A apărut o eroare la aplicare.";
+      alert(errorMessage);
+      if (errorMessage.includes("Ai aplicat deja")) setHasApplied(true);
       console.error(err);
     } finally {
       setApplying(false);
@@ -66,6 +93,7 @@ const JobDetailsPage = () => {
       .then((data) => {
         setJob(data);
         setError(null);
+        checkIfApplied(data.ID_JOB);
       })
       .catch((err) => {
         setError(err.message);
@@ -154,13 +182,25 @@ const JobDetailsPage = () => {
                 </div>
               </div>
               <div className="flex gap-4">
-                <div title={!user ? "Trebuie să fii autentificat pentru a aplica" : ""}>
+                <div
+                  title={
+                    !user ? "Trebuie să fii autentificat pentru a aplica" : ""
+                  }
+                >
                   <button
                     onClick={handleApply}
-                    disabled={!user || applying}
-                    className="flex-1 py-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={!user || applying || hasApplied}
+                    className={`flex-1 py-3 px-6 rounded-lg font-semibold transition ${
+                      hasApplied
+                        ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    }`}
                   >
-                    {applying ? "Se aplică..." : "Aplică acum"}
+                    {hasApplied
+                      ? "Ai aplicat deja"
+                      : applying
+                        ? "Se aplică..."
+                        : "Aplică acum"}
                   </button>
                 </div>
                 <button className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">

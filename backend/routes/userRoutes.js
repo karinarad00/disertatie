@@ -378,7 +378,7 @@ router.post("/cereri-angajatori", async (req, res) => {
 // Aprobare cerere angajator
 router.post("/cereri-angajatori/:id/aproba", async (req, res) => {
   const id_cerere = req.params.id;
-  console.log("ID cerere pentru aprobare (backend):", id_cerere);
+  
   try {
     const result = await executeQuery(
       `SELECT * FROM CereriAngajatori WHERE id_cerere = :id`,

@@ -109,28 +109,24 @@ router.post(
             { id: userId },
             { autoCommit: true },
           );
-          console.log(`Analiza CV activă pentru user ${userId}`);
         } else if (productId === process.env.PRODUCT_SUGESTII) {
           await executeQuery(
             `UPDATE utilizator SET subscriptie_recomandari = 1 WHERE id_utilizator = :id`,
             { id: userId },
             { autoCommit: true },
           );
-          console.log(`Sugestii active pentru user ${userId}`);
         } else if (productId === process.env.PRODUCT_PROMOVARE && jobId) {
           await executeQuery(
             `UPDATE job SET promoted = 1 WHERE id_job = :jobId`,
             { jobId: Number(jobId) },
             { autoCommit: true },
           );
-          console.log(`Promovare activă pentru job ${jobId}`);
         } else if (productId === process.env.PRODUCT_MATCH) {
           await executeQuery(
             `UPDATE utilizator SET subscriptie_angajatori = 1 WHERE id_utilizator = :id`,
             { id: userId },
             { autoCommit: true },
           );
-          console.log(`Candidate Match activ pentru user ${userId}`);
         }
       }
 
@@ -148,7 +144,6 @@ router.post(
             { jobId: Number(jobId) },
             { autoCommit: true },
           );
-          console.log(`Promovare oprită pentru job ${jobId}`);
         }
 
         if (productId === process.env.PRODUCT_MATCH) {
@@ -157,7 +152,7 @@ router.post(
             { id: userId },
             { autoCommit: true },
           );
-          console.log(`Candidate Match dezactivat pentru user ${userId}`);
+          
         }
       }
     } catch (err) {

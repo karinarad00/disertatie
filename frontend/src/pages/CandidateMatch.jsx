@@ -28,13 +28,14 @@ export default function CandidateMatch() {
   const fetchData = async () => {
     try {
       setMatchingInProgress(true);
+      setCandidates([]);
 
       const jobRes = await fetch(`http://localhost:5000/api/jobs/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
       const jobData = await jobRes.json();
       setJob(jobData);
-
+      
       const appRes = await fetch(`http://localhost:5000/api/aplicari/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
@@ -45,6 +46,7 @@ export default function CandidateMatch() {
         cvUrl: a.CV_URL_APLICARE,
         applied: true,
         userId: a.ID_UTILIZATOR,
+        LOCATION: a.LOCATION || "N/A",
       }));
 
       if (includeGlobalPool) {
@@ -61,7 +63,7 @@ export default function CandidateMatch() {
               USERNAME: p.USERNAME,
               EMAIL: p.EMAIL,
               PHONE: p.PHONE,
-              LOCATION: p.LOCATION,
+              LOCATION: p.LOCATION || "N/A",
               cvUrl: p.CV_URL,
               applied: false,
               userId: p.ID_UTILIZATOR,
@@ -101,6 +103,7 @@ export default function CandidateMatch() {
           fitScore: m?.fitScore || 0,
           explanation: m?.explanation || "",
           title: m?.title || "N/A",
+          location: m?.location || c.LOCATION || "N/A",
           experience: m?.experience || "N/A",
           skills: m?.skills || [],
         };
@@ -120,6 +123,7 @@ export default function CandidateMatch() {
       navigate("/matching");
       return;
     }
+    setLoading(true);
     fetchData();
   }, [id, includeGlobalPool]);
 
@@ -156,35 +160,32 @@ export default function CandidateMatch() {
         </button>
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
             <Users className="size-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">{job.title}</h1>
+            <h1 className="text-3xl font-bold">{job.TITLU}</h1>
           </div>
-          <p className="text-gray-600">
-            {job.company_name} • {candidates.length} candidates analyzed
-          </p>
+          <p className="text-xl text-gray-600 font-medium">{job.DENUMIRE_COMPANIE}</p>
+          <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-gray-600 font-semibold">
+              {candidates.length} candidates analyzed
+            </p>
 
-          <div className="mt-4 flex items-center gap-3">
-            <span className="text-sm text-gray-600">Include global pool</span>
-            <button
-              onClick={() => setIncludeGlobalPool(!includeGlobalPool)}
-              className={`w-11 h-6 flex items-center rounded-full transition ${
-                includeGlobalPool ? "bg-blue-600" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`h-4 w-4 bg-white rounded-full transform transition ${
-                  includeGlobalPool ? "translate-x-6" : "translate-x-1"
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Include global pool</span>
+              <button
+                onClick={() => setIncludeGlobalPool(!includeGlobalPool)}
+                className={`w-11 h-6 flex items-center rounded-full transition ${
+                  includeGlobalPool ? "bg-blue-600" : "bg-gray-300"
                 }`}
-              />
-            </button>
-
-            {matchingInProgress && (
-              <span className="text-sm text-blue-600 animate-pulse">
-                Updating...
-              </span>
-            )}
+              >
+                <span
+                  className={`h-4 w-4 bg-white rounded-full transform transition ${
+                    includeGlobalPool ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </div>
 

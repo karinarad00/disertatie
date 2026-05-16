@@ -36,7 +36,7 @@ const Sugestii = () => {
       const res = await axios.post("/api/cv/suggestions", { cvUrl });
 
       const data = res.data;
-      console.log("Sugestii primite:", data);
+      
       const sortedJobs = (data.jobs || []).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
       setJobs(sortedJobs);
       setExplanation(data.explanation || "");

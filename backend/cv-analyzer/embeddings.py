@@ -4,8 +4,9 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-INDEX_PATH = "faiss_index/jobs.index"
-META_PATH = "faiss_index/jobs_meta.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INDEX_PATH = os.path.join(BASE_DIR, "faiss_index/jobs.index")
+META_PATH = os.path.join(BASE_DIR, "faiss_index/jobs_meta.json")
 
 model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 

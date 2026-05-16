@@ -220,6 +220,9 @@ CV: {cv_text[:1000]}
         }
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in job_cv_match: {error_details}")
         raise HTTPException(status_code=500, detail=str(e))
     
 # ---------------- JOB-TO-CV MATCHING ----------------
@@ -234,9 +237,14 @@ def job_cv_match(req: JobCVMatchRequest):
         with open(META_PATH, encoding="utf-8") as f:
             jobs_meta = json.load(f)
 
-        job_meta = next((j for j in jobs_meta if j.get("id") == req.jobId or j.get("id_job") == req.jobId), None)
+        job_meta = next((j for j in jobs_meta if j.get("ID_JOB") == req.jobId), None)
         if not job_meta:
-            raise HTTPException(status_code=404, detail="Job not found")
+            # Fallback check
+            job_meta = next((j for j in jobs_meta if str(j.get("ID_JOB")) == str(req.jobId)), None)
+            
+        if not job_meta:
+            print(f"DEBUG: Job {req.jobId} not found in meta list. Available keys: {jobs_meta[0].keys() if jobs_meta else 'Empty'}")
+            raise HTTPException(status_code=404, detail=f"Job {req.jobId} not found")
 
         job_text = job_meta["text"]
         print(f"DEBUG: Job text length: {len(job_text)}")
@@ -256,11 +264,15 @@ def job_cv_match(req: JobCVMatchRequest):
                 os.unlink(path)
 
                 cv_vector = embed(cv_text).reshape(1, -1)
-                print(f"DEBUG: CV vector norm: {np.linalg.norm(cv_vector)}")
                 
+                # Check for zero vector
+                norm = np.linalg.norm(cv_vector)
+                if norm == 0:
+                    print(f"DEBUG: Zero vector encountered for {cv_url}")
+                    continue
+
                 similarity = float(np.dot(job_vector, cv_vector.T) / 
-                                (np.linalg.norm(job_vector) * np.linalg.norm(cv_vector)))
-                print(f"DEBUG: Calculated similarity: {similarity}")
+                                (np.linalg.norm(job_vector) * norm))
                 score = round(similarity * 100, 2)
 
                 analysis_prompt = f"""
@@ -290,7 +302,9 @@ Structură JSON:
                     **details
                 })
             except Exception as e:
-                print(f"Error processing CV {cv_url}: {e}")
+                print(f"Error processing CV {cv_url}: {str(e)}")
+                import traceback
+                traceback.print_exc()
 
         results = sorted(results, key=lambda x: x["fitScore"], reverse=True)
         return {
@@ -299,4 +313,7 @@ Structură JSON:
         }
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in job_cv_match: {error_details}")
         raise HTTPException(status_code=500, detail=str(e))
