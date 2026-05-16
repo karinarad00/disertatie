@@ -120,7 +120,7 @@ const Sugestii = () => {
                   <div key={job.id || job.ID_JOB} className="relative">
                     <div className="absolute -left-3 -top-3 z-10">
                       <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1">
-                        <Target className="size-4" />
+                        <Target className="size-4 flex-shrink-0" />
                         {job.matchScore !== undefined && job.matchScore !== null ? job.matchScore : "N/A"}% Potrivire
                       </div>
                     </div>

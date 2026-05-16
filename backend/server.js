@@ -24,9 +24,6 @@ app.use(
   })
 );
 
-// Middleware
-app.use(cacheMiddleware);
-
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/stripe/webhook") {
     next();
@@ -34,6 +31,9 @@ app.use((req, res, next) => {
     express.json()(req, res, next);
   }
 });
+
+// Middleware
+app.use(cacheMiddleware);
 
 initialize();
 

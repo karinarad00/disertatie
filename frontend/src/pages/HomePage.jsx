@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import JobList from "../components/JobList";
 import JobSlider from "../components/JobSlider";
 import FilterDropdown from "../components/FilterDropdown";
@@ -34,15 +34,39 @@ const HomePage = () => {
   const [domainOptions, setDomainOptions] = useState([]);
 
   const [showSuggestions, setShowSuggestions] = useState({
-    search: true,
-    city: true,
-    company: true,
+    search: false,
+    city: false,
+    company: false,
   });
+
+  const searchRef = useRef(null);
+  const cityRef = useRef(null);
+  const companyRef = useRef(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const jobsPerPage = 10;
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions((prev) => ({ ...prev, search: false }));
+      }
+      if (cityRef.current && !cityRef.current.contains(event.target)) {
+        setShowSuggestions((prev) => ({ ...prev, city: false }));
+      }
+      if (companyRef.current && !companyRef.current.contains(event.target)) {
+        setShowSuggestions((prev) => ({ ...prev, company: false }));
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // ---------------- AUTOFILL ENGINE ----------------
   const normalize = (s) => (s || "").toString().toLowerCase().trim();
@@ -149,7 +173,7 @@ const HomePage = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4 mb-4">
           {/* TITLE */}
-          <div className="flex-1 relative">
+          <div ref={searchRef} className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
@@ -181,7 +205,7 @@ const HomePage = () => {
                       }));
                     }}
                   >
-                    <Search className="size-4 text-gray-500" />
+                    <Search className="size-4 text-gray-500 flex-shrink-0" />
                     {s}
                   </div>
                 ))}
@@ -190,7 +214,7 @@ const HomePage = () => {
           </div>
 
           {/* CITY */}
-          <div className="flex-1 relative">
+          <div ref={cityRef} className="flex-1 relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
@@ -220,7 +244,7 @@ const HomePage = () => {
                       setShowSuggestions((prev) => ({ ...prev, city: false }));
                     }}
                   >
-                    <MapPin className="size-4 text-gray-500" />
+                    <MapPin className="size-4 text-gray-500 flex-shrink-0" />
                     {s}
                   </div>
                 ))}
@@ -229,7 +253,7 @@ const HomePage = () => {
           </div>
 
           {/* COMPANY */}
-          <div className="flex-1 relative">
+          <div ref={companyRef} className="flex-1 relative">
             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-3 border rounded-lg"
@@ -258,7 +282,7 @@ const HomePage = () => {
                       }));
                     }}
                   >
-                    <Building2 className="size-4 text-gray-500" />
+                    <Building2 className="size-4 text-gray-500 flex-shrink-0" />
                     {s}
                   </div>
                 ))}

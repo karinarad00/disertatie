@@ -24,6 +24,7 @@ async function executeQuery(sql, binds = [], options = {}) {
     connection = await oracledb.getConnection();
     const result = await connection.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
+      autoCommit: true, // Enable autoCommit by default
       ...options,
     });
     if (result.outBinds) {

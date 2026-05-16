@@ -243,7 +243,7 @@ router.get("/by-company/:id", async (req, res) => {
         j.id_job AS "id",
         j.titlu AS "title",
         j.promoted AS "promoted",
-        COUNT(aj.id_aplicare) AS "applicants",
+        COUNT(aj.id_job) AS "applicants",
         TO_CHAR(j.data_postarii, 'DD Mon YYYY') AS "posted"
       FROM Job j
       LEFT JOIN Aplicare_Job aj ON j.id_job = aj.id_job

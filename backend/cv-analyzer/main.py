@@ -89,7 +89,6 @@ def analyze_cv(req: CVRequest):
             path = tmp.name
 
         text = extract_text_from_pdf(path)
-        print(f"DEBUG: Extracted CV text (first 500 chars): {text[:500]}")
         os.unlink(path)
         text = text[:6000] # Mărim limita de text pentru analiză mai bună
 
@@ -176,7 +175,6 @@ def job_suggestions(req: CVRequest):
             path = tmp.name
 
         cv_text = extract_text_from_pdf(path)[:4000]
-        print(f"DEBUG: Extracted CV text (first 500 chars) in job_suggestions: {cv_text[:500]}")
         os.unlink(path)
 
         top_k = 10
@@ -243,13 +241,10 @@ def job_cv_match(req: JobCVMatchRequest):
             job_meta = next((j for j in jobs_meta if str(j.get("ID_JOB")) == str(req.jobId)), None)
             
         if not job_meta:
-            print(f"DEBUG: Job {req.jobId} not found in meta list. Available keys: {jobs_meta[0].keys() if jobs_meta else 'Empty'}")
             raise HTTPException(status_code=404, detail=f"Job {req.jobId} not found")
 
         job_text = job_meta["text"]
-        print(f"DEBUG: Job text length: {len(job_text)}")
         job_vector = embed(job_text).reshape(1, -1)
-        print(f"DEBUG: Job vector norm: {np.linalg.norm(job_vector)}")
 
         results = []
         for cv_url in req.cvUrls:
@@ -260,7 +255,6 @@ def job_cv_match(req: JobCVMatchRequest):
                     path = tmp.name
 
                 cv_text = extract_text_from_pdf(path)[:4000]
-                print(f"DEBUG: CV text length: {len(cv_text)}")
                 os.unlink(path)
 
                 cv_vector = embed(cv_text).reshape(1, -1)
@@ -268,7 +262,6 @@ def job_cv_match(req: JobCVMatchRequest):
                 # Check for zero vector
                 norm = np.linalg.norm(cv_vector)
                 if norm == 0:
-                    print(f"DEBUG: Zero vector encountered for {cv_url}")
                     continue
 
                 similarity = float(np.dot(job_vector, cv_vector.T) / 

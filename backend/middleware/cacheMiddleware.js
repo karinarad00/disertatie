@@ -2,18 +2,27 @@ const NodeCache = require("node-cache");
 const myCache = new NodeCache({ stdTTL: 3600 });
 
 const cacheMiddleware = (req, res, next) => {
-  // Only cache simple public GET routes
-  if (req.method !== "GET") return next();
-
-  // Explicit list of routes that are safe to cache globally
-  const safeRoutes = ["/api/jobs/all", "/api/domenii/all"];
+  // Explicit list of routes that are safe to cache
+  const safeRoutes = [
+    "/api/jobs/all",
+    "/api/jobs/by-company",
+    "/api/domenii/all",
+    "/api/cv/analyze",
+    "/api/cv/suggestions",
+    "/api/cv/job-cv-match",
+  ];
   const isSafe = safeRoutes.some((route) => req.originalUrl.startsWith(route));
 
   if (!isSafe) {
     return next();
   }
 
-  const key = req.originalUrl;
+  // Create a cache key based on method, URL and body
+  let key = `${req.method}:${req.originalUrl}`;
+  if (req.method === "POST" && req.body) {
+    key += ":" + JSON.stringify(req.body);
+  }
+
   const cached = myCache.get(key);
 
   if (cached) {

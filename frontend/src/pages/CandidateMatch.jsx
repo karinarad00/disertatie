@@ -46,7 +46,7 @@ export default function CandidateMatch() {
         cvUrl: a.CV_URL_APLICARE,
         applied: true,
         userId: a.ID_UTILIZATOR,
-        LOCATION: a.LOCATION || "N/A",
+        LOCATION: a.LOCATION,
       }));
 
       if (includeGlobalPool) {
@@ -63,7 +63,7 @@ export default function CandidateMatch() {
               USERNAME: p.USERNAME,
               EMAIL: p.EMAIL,
               PHONE: p.PHONE,
-              LOCATION: p.LOCATION || "N/A",
+              LOCATION: p.LOCATION,
               cvUrl: p.CV_URL,
               applied: false,
               userId: p.ID_UTILIZATOR,
@@ -98,13 +98,14 @@ export default function CandidateMatch() {
 
       const ranked = pool.map((c) => {
         const m = matchData.rankedCandidates?.find((x) => x.cvUrl === c.cvUrl);
+        console.log("Matching", c.USERNAME, m);
         return {
           ...c,
           fitScore: m?.fitScore || 0,
           explanation: m?.explanation || "",
           title: m?.title || "N/A",
-          location: m?.location || c.LOCATION || "N/A",
-          experience: m?.experience || "N/A",
+          location: c.LOCATION || m?.location || "N/A",
+          experience: c.EXPERIENCE || m?.experience || "N/A",
           skills: m?.skills || [],
         };
       });
@@ -119,29 +120,28 @@ export default function CandidateMatch() {
 
   useEffect(() => {
     if (!user.subscriptie_angajatori) {
-      alert("You need subscription access.");
+      alert("Ai nevoie de un abonament activ pentru a accesa această pagină.");
       navigate("/matching");
       return;
     }
-    setLoading(true);
     fetchData();
   }, [id, includeGlobalPool]);
 
-  if (loading) {
+  if (loading && !job) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full mb-4" />
-        <p className="text-gray-600">Analyzing candidates...</p>
+        <p className="text-gray-600">Încărcăm datele...</p>
       </div>
     );
   }
 
-  if (!job) {
+  if (!job && !loading) {
     return (
       <div className="text-center mt-10">
-        <p className="text-red-500 mb-4">Job not found</p>
+        <p className="text-red-500 mb-4">Jobul nu a fost găsit</p>
         <button onClick={() => navigate("/matching")} className="text-blue-600">
-          Back
+          Înapoi
         </button>
       </div>
     );
@@ -156,28 +156,29 @@ export default function CandidateMatch() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="size-5" />
-          Back to Matching
+          Înapoi la Potrivire
         </button>
 
         {/* Header */}
         <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
             <Users className="size-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">{job.TITLU}</h1>
+            <h1 className="text-3xl font-bold">{job?.TITLU}</h1>
           </div>
-          <p className="text-xl text-gray-600 font-medium">{job.DENUMIRE_COMPANIE}</p>
+          <p className="text-xl text-gray-600 font-medium">{job?.DENUMIRE_COMPANIE}</p>
           <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
             <p className="text-gray-600 font-semibold">
-              {candidates.length} candidates analyzed
+              {matchingInProgress ? "Se analizează..." : `${candidates.length} candidați analizați`}
             </p>
 
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">Include global pool</span>
+              <span className="text-sm text-gray-600">Include baza globală</span>
               <button
                 onClick={() => setIncludeGlobalPool(!includeGlobalPool)}
+                disabled={matchingInProgress}
                 className={`w-11 h-6 flex items-center rounded-full transition ${
                   includeGlobalPool ? "bg-blue-600" : "bg-gray-300"
-                }`}
+                } ${matchingInProgress ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span
                   className={`h-4 w-4 bg-white rounded-full transform transition ${
@@ -193,84 +194,101 @@ export default function CandidateMatch() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT: Candidates */}
           <div className="lg:col-span-2 space-y-4">
-            {candidates.map((c) => (
-              <div
-                key={c.userId}
-                className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-xl font-bold">{c.USERNAME}</h3>
-                    <p className="text-gray-600">{c.title}</p>
-                  </div>
-
-                  <div className="bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold flex items-center gap-1">
-                    <Star className="size-4" />
-                    {Math.round(c.fitScore)}%
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="size-4" />
-                    {c.LOCATION || "N/A"}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="size-4" />
-                    {c.experience}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="size-4" />
-                    {c.PHONE || "N/A"}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="size-4" />
-                    {c.EMAIL}
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-700 italic mb-3">
-                  {c.explanation}
-                </p>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {c.skills.map((s, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-
-                <a
-                  href={c.cvUrl}
-                  target="_blank"
-                  className="text-blue-600 text-sm flex items-center gap-1 hover:underline"
-                >
-                  View CV <ExternalLink className="size-4" />
-                </a>
+            {matchingInProgress ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center">
+                <div className="animate-spin h-10 w-10 border-b-2 border-blue-600 rounded-full mb-4" />
+                <p className="text-gray-600">Analizăm candidații...</p>
               </div>
-            ))}
+            ) : candidates.length > 0 ? (
+              candidates.map((c) => (
+                <div
+                  key={c.userId}
+                  className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-bold">{c.USERNAME}</h3>
+                        {c.applied && (
+                          <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
+                            Aplicat
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-600">{c.title}</p>
+                    </div>
+
+                    <div className="bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold flex items-center gap-1">                      <Star className="size-4" />
+                      {Math.round(c.fitScore)}%
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="size-4" />
+                      {c.LOCATION || "N/A"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="size-4" />
+                      {c.experience}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="size-4" />
+                      {c.PHONE || "N/A"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="size-4" />
+                      {c.EMAIL}
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-700 italic mb-3">
+                    {c.explanation}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {c.skills.map((s, i) => (
+                      <span
+                        key={i}
+                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+
+                  <a
+                    href={c.cvUrl}
+                    target="_blank"
+                    className="text-blue-600 text-sm flex items-center gap-1 hover:underline"
+                  >
+                    Vezi CV <ExternalLink className="size-4" />
+                  </a>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">
+                Nu au fost găsiți candidați pentru acest job.
+              </div>
+            )}
           </div>
 
           {/* RIGHT: Sidebar */}
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="font-semibold mb-3">Quick Stats</h3>
+              <h3 className="font-semibold mb-3">Statistici rapide</h3>
               <p className="text-sm text-gray-600">
-                Candidates: {candidates.length}
+                Candidați: {matchingInProgress ? "..." : candidates.length}
               </p>
               <p className="text-sm text-gray-600">
-                High match: {candidates.filter((c) => c.fitScore > 80).length}
+                Potrivire mare: {matchingInProgress ? "..." : candidates.filter((c) => c.fitScore > 80).length}
               </p>
             </div>
 
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white p-6 rounded-lg">
-              <h3 className="font-bold mb-2">AI Matching</h3>
+              <h3 className="font-bold mb-2">Potrivire AI</h3>
               <p className="text-sm text-blue-100">
-                Candidates are ranked using semantic CV-job matching.
+                Candidații sunt sortați folosind potrivirea semantică dintre CV și job.
               </p>
             </div>
           </div>

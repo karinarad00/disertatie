@@ -80,19 +80,19 @@ const JobCard = ({ job, isFavorite: initialFavorite, user, setFavorites }) => {
           <div className="flex flex-wrap gap-4 mb-3 text-sm text-gray-600">
             {job.LOCATIE && (
               <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span>{job.LOCATIE}</span>
               </div>
             )}
             {job.TIP_JOB && (
               <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 flex-shrink-0" />
                 <span>{job.TIP_JOB}</span>
               </div>
             )}
             {job.SALARIU && (
               <div className="flex items-center gap-1">
-                <DollarSign className="w-4 h-4" />
+                <DollarSign className="w-4 h-4 flex-shrink-0" />
                 <span>{job.SALARIU}</span>
               </div>
             )}

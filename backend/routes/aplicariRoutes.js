@@ -5,17 +5,35 @@ const { executeQuery } = require("../db");
 const authenticateToken = require("../middleware/authMiddleware");
 
 
+router.get("/status/:jobId", authenticateToken, async (req, res) => {
+  const { jobId } = req.params;
+  const id_utilizator = req.user.id;
+
+  try {
+    const existing = await executeQuery(
+      "SELECT 1 FROM aplicare_job WHERE ID_JOB = :jobId AND ID_UTILIZATOR = :id_utilizator",
+      { jobId, id_utilizator }
+    );
+    res.json({ hasApplied: existing.length > 0 });
+  } catch (err) {
+    console.error("Eroare la verificarea statusului aplicației:", err);
+    res.status(500).json({ message: "Eroare server." });
+  }
+});
+
 router.get("/:jobId/", authenticateToken, async (req, res) => {
   const { jobId } = req.params;
   
   try {
     // Preluăm aplicațiile pentru job-ul respectiv + info user
     const applications = await executeQuery(
-      `SELECT a.ID_APLICARE, a.ID_UTILIZATOR, a.ID_JOB, a.CV_URL_APLICARE,
+      `SELECT a.ID_UTILIZATOR as ID_APLICARE, a.ID_UTILIZATOR, a.ID_JOB, a.CV_URL_APLICARE,
               a.DATA_APLICARII, a.STATUS_APLICARE,
-              u.USERNAME, u.EMAIL, u.IMAGINE_PROFIL
+              u.USERNAME, u.EMAIL, u.IMAGINE_PROFIL, u.PHONE, u.EXPERIENCE,
+              o.DENUMIRE_ORAS as LOCATION
        FROM aplicare_job a
        JOIN utilizator u ON u.ID_UTILIZATOR = a.ID_UTILIZATOR
+       LEFT JOIN Oras o ON u.LOCATION = o.ID_ORAS
        WHERE a.ID_JOB = :jobId`,
       { jobId },
     );
@@ -35,7 +53,7 @@ router.post("/:jobId/apply", authenticateToken, async (req, res) => {
   try {
     // Verificăm dacă utilizatorul a aplicat deja
     const existing = await executeQuery(
-      "SELECT * FROM aplicare_job WHERE ID_JOB = :jobId AND ID_UTILIZATOR = :id_utilizator",
+      "SELECT 1 FROM aplicare_job WHERE ID_JOB = :jobId AND ID_UTILIZATOR = :id_utilizator",
       { jobId, id_utilizator }
     );
     

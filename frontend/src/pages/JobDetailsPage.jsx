@@ -22,6 +22,7 @@ const JobDetailsPage = () => {
   const [error, setError] = useState(null);
   const [applying, setApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [statusCheckLoading, setStatusCheckLoading] = useState(false);
 
   const formatDate = (isoString) => {
     if (!isoString) return "Data necunoscută";
@@ -42,19 +43,19 @@ const JobDetailsPage = () => {
 
   const checkIfApplied = async (jobId) => {
     if (!user) return;
+    setStatusCheckLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/aplicari/${jobId}`,
+        `http://localhost:5000/api/aplicari/status/${jobId}`,
         {
           headers: { Authorization: `Bearer ${user.token}` },
         },
       );
-      const applied = res.data.some(
-        (app) => app.ID_UTILIZATOR === user.id_utilizator,
-      );
-      setHasApplied(applied);
+      setHasApplied(res.data.hasApplied);
     } catch (err) {
       console.error("Error checking application status:", err);
+    } finally {
+      setStatusCheckLoading(false);
     }
   };
 
@@ -93,7 +94,6 @@ const JobDetailsPage = () => {
       .then((data) => {
         setJob(data);
         setError(null);
-        checkIfApplied(data.ID_JOB);
       })
       .catch((err) => {
         setError(err.message);
@@ -101,6 +101,12 @@ const JobDetailsPage = () => {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (job && user) {
+      checkIfApplied(job.ID_JOB);
+    }
+  }, [job, user]);
 
   if (loading)
     return (
@@ -189,18 +195,20 @@ const JobDetailsPage = () => {
                 >
                   <button
                     onClick={handleApply}
-                    disabled={!user || applying || hasApplied}
+                    disabled={!user || applying || hasApplied || statusCheckLoading}
                     className={`flex-1 py-3 px-6 rounded-lg font-semibold transition ${
                       hasApplied
                         ? "bg-gray-200 text-gray-600 cursor-not-allowed"
                         : "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     }`}
                   >
-                    {hasApplied
-                      ? "Ai aplicat deja"
-                      : applying
-                        ? "Se aplică..."
-                        : "Aplică acum"}
+                    {statusCheckLoading
+                      ? "Se verifică..."
+                      : hasApplied
+                        ? "Ai aplicat deja"
+                        : applying
+                          ? "Se aplică..."
+                          : "Aplică acum"}
                   </button>
                 </div>
                 <button className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
